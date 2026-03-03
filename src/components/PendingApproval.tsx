@@ -1,7 +1,7 @@
 import v4Logo from "@/assets/v4logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Clock, LogOut } from "lucide-react";
+import { Clock, LogOut, X } from "lucide-react";
 
 export function PendingApproval() {
   const { signOut, profile } = useAuth();
@@ -10,33 +10,48 @@ export function PendingApproval() {
   const isRejected = profile?.status === "rejected";
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[hsl(0,0%,4%)] via-[hsl(0,40%,8%)] to-[hsl(0,0%,4%)]" />
-      <div className="relative z-10 text-center max-w-md px-6">
-        <img src={v4Logo} alt="V4 Company" className="h-12 mx-auto mb-6" />
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#F8F9FA]">
+      <div className="absolute inset-0 bg-white" />
+      <div className="relative z-10 text-center max-w-md px-6 animate-fadeIn">
+        <img src={v4Logo} alt="V4 Company" className="h-10 mx-auto mb-10 [filter:brightness(0)_invert(19%)_sepia(97%)_saturate(7404%)_hue-rotate(357deg)_brightness(101%)_contrast(117%)]" />
+
         {isPending && (
-          <>
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-primary" />
+          <div className="space-y-6">
+            <div className="w-20 h-20 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto mb-6 relative">
+              <div className="absolute inset-0 rounded-full animate-ping bg-primary/20 opacity-20" />
+              <Clock className="w-10 h-10 text-primary relative z-10" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Aguardando Aprovação</h2>
-            <p className="text-sm text-white/50 leading-relaxed mb-6">
-              Seu cadastro foi recebido com sucesso. Um administrador irá revisar e aprovar seu acesso em breve.
-            </p>
-          </>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Aguardando Aprovação</h2>
+              <p className="text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Seu cadastro foi recebido com sucesso. Um administrador irá revisar e aprovar seu acesso em breve.
+              </p>
+            </div>
+          </div>
         )}
+
         {isRejected && (
-          <>
-            <h2 className="text-xl font-bold text-white mb-2">Acesso Negado</h2>
-            <p className="text-sm text-white/50 leading-relaxed mb-6">
-              Infelizmente, seu acesso foi recusado por um administrador. Entre em contato com a gestão para mais informações.
-            </p>
-          </>
+          <div className="space-y-6">
+            <div className="w-20 h-20 rounded-full bg-destructive/5 border border-destructive/10 flex items-center justify-center mx-auto mb-6">
+              <X className="w-10 h-10 text-destructive" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Acesso Negado</h2>
+              <p className="text-slate-500 leading-relaxed max-w-sm mx-auto">
+                Infelizmente, seu acesso foi recusado por um administrador. Entre em contato com a gestão para mais informações.
+              </p>
+            </div>
+          </div>
         )}
-        <Button variant="ghost" onClick={signOut} className="text-white/40 hover:text-white gap-2">
-          <LogOut className="w-4 h-4" />
-          Sair
-        </Button>
+
+        <div className="mt-12 pt-12 border-t border-slate-200">
+          <Button variant="ghost" onClick={signOut} className="text-slate-400 hover:text-slate-900 hover:bg-slate-100 gap-2 transition-all">
+            <LogOut className="w-4 h-4" />
+            Sair da conta
+          </Button>
+        </div>
       </div>
     </div>
   );

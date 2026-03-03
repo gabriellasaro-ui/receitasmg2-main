@@ -8,11 +8,31 @@ import {
   getSemaforoBgClass,
 } from "@/data/seedData";
 import { SemaforoBadge } from "./SemaforoBadge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Building2, Filter, Users } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-function MemberAvatar({ name, className }: { name: string; className?: string }) {
+function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
+  if (avatarUrl) {
+    return (
+      <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/80 border border-border/40 shrink-0 ${className}`}>
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+    );
+  }
+
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
-    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[13px] ${className}`}>
+    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[13px] shrink-0 ${className}`}>
       {initials}
     </div>
   );
@@ -31,16 +51,49 @@ function MetricCell({ label, value, highlight, muted }: { label: string; value: 
 
 export function PersonView() {
   const { getCloserAcumulado, getPvAcumulado, goals } = useDashboardStore();
-  const { closers, preVendas } = useUnitData();
+  const { isAdmin, profile } = useAuth();
+  const [selectedUnitId, setSelectedUnitId] = useState<string>("all");
+  const [unitsList, setUnitsList] = useState<{ id: string; name: string }[]>([]);
+
+  const { closers, preVendas, loading } = useUnitData(selectedUnitId);
   const diaAtual = getDiaUtilAtual();
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase.from("units").select("id, name").order("name").then(({ data }) => {
+      if (data) setUnitsList(data);
+    });
+  }, [isAdmin]);
 
   return (
     <div className="space-y-10">
       {/* Closers */}
       <div>
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold tracking-tight">Visão por Pessoa</h1>
-          <p className="text-sm text-muted-foreground mt-1">Métricas individuais de performance</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+              <Users className="w-6 h-6 text-primary" />
+              Visão por Pessoa
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">Métricas individuais de performance</p>
+          </div>
+
+          {isAdmin && unitsList.length > 0 && (
+            <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
+              <SelectTrigger className="w-[220px] h-10">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Todas unidades" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Time Completo (Brasil)</SelectItem>
+                {unitsList.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <p className="section-title mb-4">Closers</p>
@@ -57,7 +110,7 @@ export function PersonView() {
               return (
                 <div key={c.userId} className="kpi-card relative overflow-hidden">
                   <div className="flex items-center gap-4 mb-5">
-                    <MemberAvatar name={c.fullName} className="w-12 h-12" />
+                    <MemberAvatar name={c.fullName} avatarUrl={c.avatarUrl} className="w-12 h-12 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[15px]">{c.fullName}</p>
                       <span className="text-[11px] text-muted-foreground">{c.email}</span>
@@ -98,7 +151,7 @@ export function PersonView() {
               return (
                 <div key={p.userId} className="kpi-card relative overflow-hidden">
                   <div className="flex items-center gap-4 mb-5">
-                    <MemberAvatar name={p.fullName} className="w-12 h-12" />
+                    <MemberAvatar name={p.fullName} avatarUrl={p.avatarUrl} className="w-12 h-12 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[15px]">{p.fullName}</p>
                       <span className="text-[11px] text-muted-foreground">{p.email}</span>

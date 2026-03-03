@@ -95,7 +95,10 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-[-0.04em] leading-[0.9] mb-4">
             <span className="text-foreground">Painel Receitas</span>
             <br />
-            <span className="text-primary">{displayName}</span>
+            <span className="text-primary">MG2</span>
+            {!isAdmin && unitName && (
+              <span className="text-primary/90 text-[0.85em] tracking-tight ml-2">{unitName}</span>
+            )}
           </h1>
 
           {/* Subtitle */}

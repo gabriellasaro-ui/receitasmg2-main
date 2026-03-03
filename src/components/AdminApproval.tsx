@@ -14,8 +14,32 @@ interface PendingUser {
   unit_id: string | null;
   status: string;
   created_at: string;
+  avatar_url: string | null;
   role: string | null;
   unit_name: string | null;
+}
+
+function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
+  if (avatarUrl) {
+    return (
+      <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/50 border border-border/40 shrink-0 ${className}`}>
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+          }}
+        />
+      </div>
+    );
+  }
+  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return (
+    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[11px] shrink-0 ${className}`}>
+      {initials}
+    </div>
+  );
 }
 
 export function AdminApproval() {
@@ -44,6 +68,7 @@ export function AdminApproval() {
           : { data: null };
         return {
           ...p,
+          avatar_url: (p as any).avatar_url ?? null,
           role: rolesData?.[0]?.role ?? null,
           unit_name: unitData?.name ?? null,
         } as PendingUser;
@@ -138,6 +163,7 @@ export function AdminApproval() {
             <div className="space-y-3">
               {pending.map((u) => (
                 <div key={u.id} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-secondary/30 border border-border/40">
+                  <MemberAvatar name={u.full_name} avatarUrl={u.avatar_url} className="w-10 h-10" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{u.full_name}</p>
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>
@@ -179,6 +205,7 @@ export function AdminApproval() {
             <div className="space-y-2">
               {others.map((u) => (
                 <div key={u.id} className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border/30">
+                  <MemberAvatar name={u.full_name} avatarUrl={u.avatar_url} className="w-10 h-10" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{u.full_name}</p>
                     <p className="text-xs text-muted-foreground truncate">{u.email}</p>

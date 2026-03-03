@@ -77,6 +77,7 @@ export function UnitView() {
       const { data: csData } = await supabase
         .from("closer_submissions")
         .select("*")
+        .eq("unit_id", selectedUnit)
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
       setCloserSubs(csData || []);
@@ -85,6 +86,7 @@ export function UnitView() {
       const { data: pvData } = await supabase
         .from("pv_submissions")
         .select("*")
+        .eq("unit_id", selectedUnit)
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
       setPvSubs(pvData || []);
@@ -92,7 +94,8 @@ export function UnitView() {
       // Proposals
       const { data: propData } = await supabase
         .from("closer_proposals_detail")
-        .select("*")
+        .select("*, profiles!inner(unit_id)")
+        .eq("profiles.unit_id", selectedUnit)
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
       setProposals(propData || []);
@@ -100,7 +103,8 @@ export function UnitView() {
       // Sales
       const { data: salesData } = await supabase
         .from("closer_sales_detail")
-        .select("*")
+        .select("*, profiles!inner(unit_id)")
+        .eq("profiles.unit_id", selectedUnit)
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
       setSales(salesData || []);

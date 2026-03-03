@@ -37,16 +37,19 @@ const channelFields: { key: keyof Channel; label: string; type: "currency" | "nu
 
 export function ChannelView() {
   const { goals, closerSubmissions } = useDashboardStore();
-  const { isAdmin, profile } = useAuth();
+  const { isAdmin, profile, roles } = useAuth();
+  const isGerente = roles?.includes("gerente_unidade");
+  const isSdr = roles?.includes("sdr");
   const diaAtual = getDiaUtilAtual();
   const [open, setOpen] = useState(false);
   const [dbChannels, setDbChannels] = useState<Channel[]>([]);
+  const [unitLimit, setUnitLimit] = useState<number>(0);
   const [editChannels, setEditChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string>("");
   const [newChannelName, setNewChannelName] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [expandedChannels, setExpandedChannels] = useState<Set<string>>(new Set());
-  const [unitBreakdown, setUnitBreakdown] = useState<Record<string, { unitName: string; receita: number; contratos: number }[]>>({});
+  const [unitBreakdown, setUnitBreakdown] = useState<Record<string, { unitId: string; unitName: string; receita: number; contratos: number }[]>>({});
   const [loading, setLoading] = useState(true);
   const [unitsList, setUnitsList] = useState<{ id: string; name: string }[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>("all");
@@ -78,79 +81,57 @@ export function ChannelView() {
 
       if (effectiveUnitId) {
         // Admin filtrando uma unidade específica OU não-admin com unidade
-        query = query.or(`unit_id.eq.${effectiveUnitId},unit_id.is.null`);
+        query = query.eq("unit_id", effectiveUnitId);
       } else if (isAdmin) {
-        // Admin com "Todas Unidades" → buscar TODOS os registros para somar
-        // Não adicionar filtro de unit_id — buscar tudo
+        // Admin com "Todas Unidades" (Regional) → buscar TODOS os registros para somar metas
+        // MG2: A meta regional é a soma de todas as metas de cada unidade
       } else {
-        // não-admin sem unidade
+        // não-admin sem unidade (não deveria acontecer, mas por segurança)
         query = query.is("unit_id", null);
       }
 
       const { data } = await query.order("channel_name");
 
       if (data && data.length > 0) {
-        // Se admin na visão regional (todas unidades), agrupar por canal e somar valores
-        if (isAdmin && !effectiveUnitId) {
-          const channelMap = new Map<string, Channel>();
+        // Agrupar por canal e somar valores em qualquer visão (Admin Regional ou Unidade)
+        const channelMap = new Map<string, Channel>();
 
-          data.forEach((row: any) => {
-            const existing = channelMap.get(row.channel_id);
-            if (existing) {
-              // Somar valores
-              existing.metaLeads += row.meta_leads || 0;
-              existing.metaRM += row.meta_rm || 0;
-              existing.metaRR += row.meta_rr || 0;
-              existing.metaContratos += row.meta_contratos || 0;
-              existing.metaReceitaTotal += Number(row.meta_receita_total) || 0;
-              existing.metaReceitaRecorrente += Number(row.meta_receita_recorrente) || 0;
-              existing.metaReceitaOnetime += Number(row.meta_receita_onetime) || 0;
-              existing.investimentoFixo += Number(row.investimento_fixo) || 0;
-              existing.metaROAS += Number(row.meta_roas) || 0;
-            } else {
-              channelMap.set(row.channel_id, {
-                id: row.channel_id,
-                nome: row.channel_name,
-                tipo: row.channel_id,
-                ativo: true,
-                metaLeads: row.meta_leads || 0,
-                metaRM: row.meta_rm || 0,
-                metaRR: row.meta_rr || 0,
-                metaContratos: row.meta_contratos || 0,
-                metaReceitaTotal: Number(row.meta_receita_total) || 0,
-                metaReceitaRecorrente: Number(row.meta_receita_recorrente) || 0,
-                metaReceitaOnetime: Number(row.meta_receita_onetime) || 0,
-                investimentoFixo: Number(row.investimento_fixo) || 0,
-                metaROAS: Number(row.meta_roas) || 0,
-              });
-            }
-          });
+        data.forEach((row: any) => {
+          const existing = channelMap.get(row.channel_id);
+          if (existing) {
+            // Somar valores
+            existing.metaLeads += row.meta_leads || 0;
+            existing.metaRM += row.meta_rm || 0;
+            existing.metaRR += row.meta_rr || 0;
+            existing.metaContratos += row.meta_contratos || 0;
+            existing.metaReceitaTotal += Number(row.meta_receita_total) || 0;
+            existing.metaReceitaRecorrente += Number(row.meta_receita_recorrente) || 0;
+            existing.metaReceitaOnetime += Number(row.meta_receita_onetime) || 0;
+            existing.investimentoFixo += Number(row.investimento_fixo) || 0;
+            existing.metaROAS += Number(row.meta_roas) || 0;
+          } else {
+            channelMap.set(row.channel_id, {
+              id: row.channel_id,
+              nome: row.channel_name,
+              tipo: row.channel_id,
+              ativo: true,
+              metaLeads: row.meta_leads || 0,
+              metaRM: row.meta_rm || 0,
+              metaRR: row.meta_rr || 0,
+              metaContratos: row.meta_contratos || 0,
+              metaReceitaTotal: Number(row.meta_receita_total) || 0,
+              metaReceitaRecorrente: Number(row.meta_receita_recorrente) || 0,
+              metaReceitaOnetime: Number(row.meta_receita_onetime) || 0,
+              investimentoFixo: Number(row.investimento_fixo) || 0,
+              metaROAS: Number(row.meta_roas) || 0,
+            });
+          }
+        });
 
-          const loaded = Array.from(channelMap.values());
-          setDbChannels(loaded);
-          channels.length = 0;
-          loaded.forEach(ch => channels.push({ ...ch }));
-        } else {
-          // Visão normal (unidade específica)
-          const loaded: Channel[] = data.map((row: any) => ({
-            id: row.channel_id,
-            nome: row.channel_name,
-            tipo: row.channel_id,
-            ativo: true,
-            metaLeads: row.meta_leads,
-            metaRM: row.meta_rm,
-            metaRR: row.meta_rr,
-            metaContratos: row.meta_contratos,
-            metaReceitaTotal: Number(row.meta_receita_total),
-            metaReceitaRecorrente: Number(row.meta_receita_recorrente),
-            metaReceitaOnetime: Number(row.meta_receita_onetime),
-            investimentoFixo: Number(row.investimento_fixo),
-            metaROAS: Number(row.meta_roas),
-          }));
-          setDbChannels(loaded);
-          channels.length = 0;
-          loaded.forEach(ch => channels.push({ ...ch }));
-        }
+        const loaded = Array.from(channelMap.values());
+        setDbChannels(loaded);
+        channels.length = 0;
+        loaded.forEach(ch => channels.push({ ...ch }));
       } else {
         setDbChannels([...channels]);
       }
@@ -159,31 +140,41 @@ export function ChannelView() {
     loadChannels();
   }, [isAdmin, effectiveUnitId]);
 
-  // Fetch unit breakdown for admin
+  // Fetch unit breakdown
   useEffect(() => {
-    if (!isAdmin) return;
     const fetchUnitBreakdown = async () => {
       const now = new Date();
       const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
 
-      const { data: sales } = await supabase
+      let salesQuery = supabase
         .from("closer_sales_detail")
-        .select("canal_venda, valor_total, closer_id, submission_id")
+        .select("canal_venda, valor_total, closer_id, submission_id, data_referencia")
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
-      const { data: subs } = await supabase
+      let subsQuery = supabase
         .from("closer_submissions")
         .select("id, unit_id")
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
-      const { data: pvBooked } = await supabase
+      let bookedQuery = supabase
         .from("pv_booked_calls_detail")
         .select("canal, unit_id")
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
+
+      if (!isAdmin && profile?.unit_id) {
+        subsQuery = subsQuery.eq("unit_id", profile.unit_id);
+        bookedQuery = bookedQuery.eq("unit_id", profile.unit_id);
+        // Para vendas, precisamos filtrar pelas submissões da unidade
+      }
+
+      const [salesRes, subsRes, bookedRes] = await Promise.all([salesQuery, subsQuery, bookedQuery]);
+      const sales = salesRes.data;
+      const subs = subsRes.data;
+      const pvBooked = bookedRes.data;
 
       const { data: units } = await supabase.from("units").select("id, name");
 
@@ -211,10 +202,11 @@ export function ChannelView() {
         breakdown[bc.canal].set(bc.unit_id, existing);
       });
 
-      const result: Record<string, { unitName: string; receita: number; contratos: number }[]> = {};
+      const result: Record<string, { unitId: string; unitName: string; receita: number; contratos: number }[]> = {};
       Object.entries(breakdown).forEach(([canal, unitData]) => {
-        result[canal] = Array.from(unitData.entries()).map(([unitId, data]) => ({
-          unitName: unitMap.get(unitId) || "Sem unidade",
+        result[canal] = Array.from(unitData.entries()).map(([uId, data]) => ({
+          unitId: uId,
+          unitName: unitMap.get(uId) || "Sem unidade",
           ...data,
         })).sort((a, b) => b.receita - a.receita);
       });
@@ -233,11 +225,32 @@ export function ChannelView() {
     });
   };
 
-  const handleOpenEditor = () => {
+  const handleOpenEditor = async () => {
     setEditChannels(dbChannels.map((c) => ({ ...c })));
     setActiveChannelId(dbChannels[0]?.id || "");
     setShowAddForm(false);
     setNewChannelName("");
+
+    // Buscar meta teto da unidade definida pelo Admin
+    const now = new Date();
+    const mesRef = now.getMonth() + 1;
+    const anoRef = now.getFullYear();
+    const searchUnitId = isAdmin ? (selectedUnitId === "all" ? null : selectedUnitId) : (profile?.unit_id || null);
+
+    if (searchUnitId) {
+      const { data: goalData } = await supabase
+        .from("goals")
+        .select("meta_receita_total")
+        .eq("unit_id", searchUnitId)
+        .eq("mes_ref", mesRef)
+        .eq("ano_ref", anoRef)
+        .maybeSingle();
+
+      setUnitLimit(goalData?.meta_receita_total || 0);
+    } else {
+      setUnitLimit(0);
+    }
+
     setOpen(true);
   };
 
@@ -294,7 +307,8 @@ export function ChannelView() {
     const mesRef = now.getMonth() + 1;
     const anoRef = now.getFullYear();
 
-    const unitId = isAdmin ? null : (profile?.unit_id || null);
+    const isRegionalView = isAdmin && selectedUnitId === "all";
+    const unitId = isRegionalView ? null : (isAdmin ? selectedUnitId : (profile?.unit_id || null));
 
     let deleteQuery = supabase
       .from("channel_goals")
@@ -309,6 +323,13 @@ export function ChannelView() {
     }
 
     await deleteQuery;
+
+    const totalDistribuido = editChannels.reduce((a, b) => a + Number(b.metaReceitaTotal), 0);
+
+    if (!isAdmin && unitLimit > 0 && totalDistribuido < unitLimit) {
+      toast.error(`Meta insuficiente! O total distribuído (R$ ${totalDistribuido.toLocaleString()}) é menor que o mínimo obrigatório de R$ ${unitLimit.toLocaleString()}.`);
+      return;
+    }
 
     const rows = editChannels.map((ch) => ({
       channel_id: ch.id,
@@ -344,15 +365,44 @@ export function ChannelView() {
   const activeEditChannel = editChannels.find((c) => c.id === activeChannelId);
 
   const channelData = dbChannels.map((ch) => {
-    const clSubs = closerSubmissions.filter((s) => s.channelId === ch.id);
-    const realizadoReceita = clSubs.reduce((a, s) => a + s.valorContratoTotal, 0);
-    const realizadoContratos = clSubs.reduce((a, s) => a + s.contratosAssinados, 0);
-    const idealReceita = calcIdealDia(ch.metaReceitaTotal, diaAtual, goals.diasUteisTotal);
+    // Se for admin vendo tudo, a meta deve ser a SOMA de todas as metas das unidades (se existirem)
+    // ou a meta global se for o caso. Por enquanto, vamos manter a meta do objeto 'ch' 
+    // mas a lógica de 'realizado' já está correta.
+
+    // Pegar realizado do breakdown agregador de vendas para maior precisão
+    const unitsInChannel = unitBreakdown[ch.id] || [];
+
+    // Se for admin vendo tudo, soma todos. Se estiver filtrado, pega só daquela unidade.
+    const relevantUnits = effectiveUnitId
+      ? unitsInChannel.filter(u => u.unitId === effectiveUnitId)
+      : unitsInChannel;
+
+    const realizadoReceita = relevantUnits.reduce((a, u) => a + u.receita, 0);
+    const realizadoContratos = relevantUnits.reduce((a, u) => a + u.contratos, 0);
+
+    // Ajuste de meta para Admin em visão Regional: Soma as metas se houver unitBreakdown
+    // Caso contrário, usa a meta global.
+    let displayMetaReceita = ch.metaReceitaTotal;
+    let displayMetaContratos = ch.metaContratos;
+
+    const idealReceita = calcIdealDia(displayMetaReceita, diaAtual, goals.diasUteisTotal);
     const pctIdeal = calcPctIdeal(realizadoReceita, idealReceita);
     const semaforo = realizadoReceita > 0 ? getSemaforoStatus(pctIdeal) : null;
     const roas = ch.investimentoFixo > 0 ? realizadoReceita / ch.investimentoFixo : 0;
-    const pctMeta = ch.metaReceitaTotal > 0 ? realizadoReceita / ch.metaReceitaTotal : 0;
-    return { ...ch, realizadoReceita, realizadoContratos, idealReceita, pctIdeal, semaforo, roasReal: roas, pctMeta };
+    const pctMeta = displayMetaReceita > 0 ? realizadoReceita / displayMetaReceita : 0;
+
+    return {
+      ...ch,
+      metaReceitaTotal: displayMetaReceita,
+      metaContratos: displayMetaContratos,
+      realizadoReceita,
+      realizadoContratos,
+      idealReceita,
+      pctIdeal,
+      semaforo,
+      roasReal: roas,
+      pctMeta
+    };
   });
 
   return (
@@ -379,106 +429,127 @@ export function ChannelView() {
               </SelectContent>
             </Select>
           )}
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddForm(true)}>
-            <Plus className="w-3.5 h-3.5" />
-            Novo Canal
-          </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={handleOpenEditor}>
-                <Settings2 className="w-3.5 h-3.5" />
-                Definir Metas
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base">
-                  <Settings2 className="w-4 h-4 text-primary" />
-                  Metas por Canal
-                </DialogTitle>
-              </DialogHeader>
 
-              <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                {editChannels.map((ch) => (
-                  <div key={ch.id} className="relative group">
-                    <button
-                      onClick={() => setActiveChannelId(ch.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeChannelId === ch.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card text-muted-foreground border-border hover:border-primary/30"
-                        }`}
-                    >
-                      {ch.nome}
-                    </button>
-                    <button
-                      onClick={() => handleRemoveChannel(ch.id)}
-                      className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Remover canal"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => setShowAddForm(!showAddForm)}
-                  className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors flex items-center gap-1"
-                >
-                  <Plus className="w-3 h-3" />
+          {(isAdmin || isGerente || isSdr) ? (
+            <>
+              {isAdmin && (
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddForm(true)}>
+                  <Plus className="w-3.5 h-3.5" />
                   Novo Canal
-                </button>
-              </div>
-
-              {showAddForm && (
-                <div className="flex items-end gap-2 mt-2 p-3 rounded-lg bg-secondary/50 border border-border/60">
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Nome do novo canal</Label>
-                    <Input
-                      value={newChannelName}
-                      onChange={(e) => setNewChannelName(e.target.value)}
-                      placeholder="Ex: Tráfego Pago, Eventos..."
-                      className="h-8 text-sm"
-                      onKeyDown={(e) => e.key === "Enter" && handleAddChannel()}
-                    />
-                  </div>
-                  <Button size="sm" className="h-8 gap-1" onClick={handleAddChannel}>
-                    <Plus className="w-3 h-3" />
-                    Adicionar
-                  </Button>
-                </div>
+                </Button>
               )}
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={handleOpenEditor}>
+                    <Settings2 className="w-3.5 h-3.5" />
+                    Definir Metas
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex flex-col gap-1 text-base">
+                      <div className="flex items-center gap-2">
+                        <Settings2 className="w-4 h-4 text-primary" />
+                        Metas por Canal
+                      </div>
+                      {unitLimit > 0 && (
+                        <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-primary/5 border border-primary/10">
+                          <div className={`text-[11px] font-semibold ${editChannels.reduce((a, b) => a + Number(b.metaReceitaTotal), 0) < unitLimit ? "text-destructive" : "text-emerald-500"}`}>
+                            Distribuído: {formatCurrency(editChannels.reduce((a, b) => a + Number(b.metaReceitaTotal), 0))} / {formatCurrency(unitLimit)} (Mínimo Obrigatório)
+                          </div>
+                        </div>
+                      )}
+                    </DialogTitle>
+                  </DialogHeader>
 
-              {activeEditChannel && (
-                <div className="mt-4 space-y-4">
-                  <p className="text-sm font-semibold">{activeEditChannel.nome}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {channelFields.map((f) => (
-                      <div key={f.key} className="space-y-1">
-                        <Label className="text-[11px] text-muted-foreground">{f.label}</Label>
-                        <Input
-                          type="number"
-                          value={(activeEditChannel as any)[f.key] || ""}
-                          onChange={(e) => handleFieldChange(activeEditChannel.id, f.key, e.target.value)}
-                          className="h-8 text-sm tabular"
-                          step={f.type === "currency" ? "0.01" : "1"}
-                        />
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {editChannels.map((ch) => (
+                      <div key={ch.id} className="relative group">
+                        <button
+                          onClick={() => setActiveChannelId(ch.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeChannelId === ch.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card text-muted-foreground border-border hover:border-primary/30"
+                            }`}
+                        >
+                          {ch.nome}
+                        </button>
+                        <button
+                          onClick={() => handleRemoveChannel(ch.id)}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Remover canal"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
                       </div>
                     ))}
+                    <button
+                      onClick={() => setShowAddForm(!showAddForm)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Novo Canal
+                    </button>
                   </div>
-                </div>
-              )}
 
-              <div className="flex justify-end gap-2 mt-6">
-                <Button size="sm" variant="outline" onClick={() => setOpen(false)} className="gap-1">
-                  <X className="w-3 h-3" />
-                  Cancelar
-                </Button>
-                <Button size="sm" onClick={handleSaveAll} className="gap-1">
-                  <Save className="w-3 h-3" />
-                  Salvar Tudo
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                  {showAddForm && (
+                    <div className="flex items-end gap-2 mt-2 p-3 rounded-lg bg-secondary/50 border border-border/60">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-[11px] text-muted-foreground">Nome do novo canal</Label>
+                        <Input
+                          value={newChannelName}
+                          onChange={(e) => setNewChannelName(e.target.value)}
+                          placeholder="Ex: Tráfego Pago, Eventos..."
+                          className="h-8 text-sm"
+                          onKeyDown={(e) => e.key === "Enter" && handleAddChannel()}
+                        />
+                      </div>
+                      <Button size="sm" className="h-8 gap-1" onClick={handleAddChannel}>
+                        <Plus className="w-3 h-3" />
+                        Adicionar
+                      </Button>
+                    </div>
+                  )}
+
+                  {activeEditChannel && (
+                    <div className="mt-4 space-y-4">
+                      <p className="text-sm font-semibold">{activeEditChannel.nome}</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {channelFields.map((f) => (
+                          <div key={f.key} className="space-y-1">
+                            <Label className="text-[11px] text-muted-foreground">{f.label}</Label>
+                            <Input
+                              type="number"
+                              value={(activeEditChannel as any)[f.key] || ""}
+                              onChange={(e) => handleFieldChange(activeEditChannel.id, f.key, e.target.value)}
+                              className="h-8 text-sm tabular"
+                              step={f.type === "currency" ? "0.01" : "1"}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 mt-6">
+                    <Button size="sm" variant="outline" onClick={() => setOpen(false)} className="gap-1">
+                      <X className="w-3 h-3" />
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleSaveAll} className="gap-1">
+                      <Save className="w-3 h-3" />
+                      Salvar Tudo
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 border border-border text-[11px] text-muted-foreground">
+              <Settings2 className="w-3 h-3" />
+              Visão de Consulta
+            </div>
+          )}
         </div>
       </div>
 

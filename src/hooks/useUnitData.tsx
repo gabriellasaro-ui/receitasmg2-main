@@ -8,6 +8,7 @@ export interface UnitMember {
   email: string;
   unitId: string | null;
   role: "closer" | "sdr" | "gerente_unidade" | "admin";
+  avatarUrl?: string;
 }
 
 export function useUnitData(overrideUnitId?: string | null) {
@@ -15,7 +16,7 @@ export function useUnitData(overrideUnitId?: string | null) {
   const [members, setMembers] = useState<UnitMember[]>([]);
   const [loading, setLoading] = useState(true);
   const userUnitId = profile?.unit_id || null;
-  
+
   // If admin passes an override, use it. "all" or undefined = no filter for admin.
   const effectiveUnitId = isAdmin
     ? (overrideUnitId && overrideUnitId !== "all" ? overrideUnitId : null)
@@ -53,6 +54,7 @@ export function useUnitData(overrideUnitId?: string | null) {
         email: p.email,
         unitId: p.unit_id,
         role: (roleMap.get(p.user_id) || "closer") as any,
+        avatarUrl: p.avatar_url,
       }));
 
       setMembers(result);

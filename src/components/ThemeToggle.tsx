@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 export function ThemeToggle() {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
+      const saved = localStorage.getItem("theme");
+      if (saved) {
+        return saved === "dark";
+      }
+      return false; // Sempre force LIGHT MODE por padrão se não há config salva
     }
-    return true;
+    return false;
   });
 
   useEffect(() => {
@@ -18,12 +22,6 @@ export function ThemeToggle() {
     }
     localStorage.setItem("theme", isDark ? "dark" : "light");
   }, [isDark]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") setIsDark(false);
-    else setIsDark(true);
-  }, []);
 
   return (
     <button

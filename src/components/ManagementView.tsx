@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useDashboardStore } from "@/data/store";
 import { useUnitData } from "@/hooks/useUnitData";
 import {
@@ -10,7 +12,7 @@ import {
   formatPercent,
 } from "@/data/seedData";
 import { SemaforoBadge } from "./SemaforoBadge";
-import { AlertTriangle, TrendingDown, Target, Activity, ShieldAlert } from "lucide-react";
+import { AlertTriangle, TrendingDown, Target, Activity, ShieldAlert, AlertOctagon } from "lucide-react";
 
 function MemberAvatar({ name, className }: { name: string; className?: string }) {
   const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -28,6 +30,49 @@ export function ManagementView() {
   const diaAtual = getDiaUtilAtual();
   const hasData = closerSubmissions.length > 0 || pvSubmissions.length > 0;
 
+  const [criticalUnits, setCriticalUnits] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCrit, setLoadingCrit] = useState(true);
+
+  useEffect(() => {
+    const fetchCriticalUnits = async () => {
+      try {
+        const now = new Date();
+        const mesRef = now.getMonth() + 1;
+        const anoRef = now.getFullYear();
+        const startDate = `${anoRef}-${String(mesRef).padStart(2, "0")}-01`;
+        const endDate = `${anoRef}-${String(mesRef).padStart(2, "0")}-31`;
+
+        const { data: units } = await supabase.from("units").select("id, name");
+        const { data: profiles } = await supabase.from("profiles").select("user_id, unit_id");
+
+        const { data: cs } = await supabase.from("closer_submissions").select("user_id").gte("data_referencia", startDate).lte("data_referencia", endDate);
+        const { data: pv } = await supabase.from("pv_submissions").select("user_id").gte("data_referencia", startDate).lte("data_referencia", endDate);
+        const { data: props } = await supabase.from("closer_proposals_detail").select("user_id").gte("data_referencia", startDate).lte("data_referencia", endDate);
+
+        if (!units || !profiles) return;
+
+        const activeUnitIds = new Set<string>();
+        const registerActivity = (items: any[]) => {
+          items?.forEach(i => {
+            const prof = profiles.find(p => p.user_id === i.user_id);
+            if (prof?.unit_id) activeUnitIds.add(prof.unit_id);
+          });
+        };
+
+        registerActivity(cs || []);
+        registerActivity(pv || []);
+        registerActivity(props || []);
+
+        const crit = units.filter(u => !activeUnitIds.has(u.id));
+        setCriticalUnits(crit);
+      } catch (e) {
+        console.error("Erro ao carregar unidades criticas:", e);
+      } finally {
+        setLoadingCrit(false);
+      }
+    };
+    fetchCriticalUnits();
+  }, []);
   const projecaoReceita = diaAtual > 0 && hasData ? (totais.faturamento / diaAtual) * goals.diasUteisTotal : 0;
   const projecaoRecorrente = diaAtual > 0 && hasData ? (totais.recorrente / diaAtual) * goals.diasUteisTotal : 0;
   const projecaoOnetime = diaAtual > 0 && hasData ? (totais.onetime / diaAtual) * goals.diasUteisTotal : 0;
@@ -102,7 +147,7 @@ export function ManagementView() {
       </div>
 
       {hasData && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="kpi-card">
             <div className="flex items-center gap-2 mb-5">
               <ShieldAlert className="w-4 h-4 text-primary" />
@@ -165,6 +210,38 @@ export function ManagementView() {
                     <SemaforoBadge status={c.semaforo} pctIdeal={c.pctIdeal} compact />
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          <div className="kpi-card border-destructive/20 bg-destructive/5 hover:border-destructive/40 hover:bg-destructive/10 transition-colors">
+            <div className="flex items-center gap-2 mb-5">
+              <AlertOctagon className="w-4 h-4 text-destructive" />
+              <p className="text-[13px] font-semibold text-destructive">Unidades Críticas</p>
+            </div>
+            {loadingCrit ? (
+              <p className="text-[12px] text-muted-foreground">Verificando...</p>
+            ) : criticalUnits.length === 0 ? (
+              <div className="flex items-center gap-2">
+                <SemaforoBadge status="verde" compact />
+                <span className="text-[12px]">Nenhuma unidade parada</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-[10px] text-muted-foreground mb-3 leading-tight">
+                  Zero lançamentos e zero propostas detectadas no mês atual:
+                </p>
+                {criticalUnits.slice(0, 5).map((u) => (
+                  <div key={u.id} className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-medium text-destructive truncate">{u.name}</span>
+                    <SemaforoBadge status="vermelho" compact />
+                  </div>
+                ))}
+                {criticalUnits.length > 5 && (
+                  <p className="text-[10px] text-muted-foreground text-center pt-2">
+                    + {criticalUnits.length - 5} unidades
+                  </p>
+                )}
               </div>
             )}
           </div>

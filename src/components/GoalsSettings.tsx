@@ -76,7 +76,7 @@ export function GoalsSettings() {
   const { isAdmin, profile, roles } = useAuth();
   const isGerente = roles.includes("gerente_unidade");
   const gerenteUnitId = profile?.unit_id || null;
-  const { getTotais } = useDashboardStore();
+  const { getTotais, loadFromDB } = useDashboardStore();
   const totais = getTotais();
 
   const now = new Date();
@@ -145,6 +145,9 @@ export function GoalsSettings() {
     else {
       toast.success(`Salvo com sucesso!`);
       setEditing(null);
+      // Recarregar store para atualizar metas na Home e outros componentes
+      const unitId = isAdmin ? null : (gerenteUnitId || null);
+      loadFromDB(unitId);
     }
     setSaving(null);
   };
@@ -374,8 +377,8 @@ export function GoalsSettings() {
                           {typeof item.unitVal === "number" && item.unitVal > 100
                             ? formatCurrency(item.unitVal)
                             : item.unitVal} / {typeof item.regionalVal === "number" && item.regionalVal > 100
-                            ? formatCurrency(item.regionalVal)
-                            : item.regionalVal}
+                              ? formatCurrency(item.regionalVal)
+                              : item.regionalVal}
                         </p>
                       </div>
                     );
@@ -393,11 +396,10 @@ export function GoalsSettings() {
           {hasRegional && isAdmin && (
             <button
               onClick={() => setActiveUnitId("regional")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                activeUnitId === "regional"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeUnitId === "regional"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card text-muted-foreground border-border hover:border-primary/30"
-              }`}
+                }`}
             >
               Regional
             </button>
@@ -406,11 +408,10 @@ export function GoalsSettings() {
             <button
               key={u.id}
               onClick={() => setActiveUnitId(u.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                activeUnitId === u.id
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeUnitId === u.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "bg-card text-muted-foreground border-border hover:border-primary/30"
-              }`}
+                }`}
             >
               {u.name}
             </button>

@@ -1,14 +1,16 @@
 import { useDashboardStore } from "@/data/store";
 import { getDiaUtilAtual, formatPercent, calcIdealDia, calcPctIdeal, getSemaforoStatus, getSemaforoColorClass, getSemaforoBgClass, getSemaforoLabel } from "@/data/seedData";
 import { SemaforoBadge } from "./SemaforoBadge";
+import { useAuth } from "@/hooks/useAuth";
 
 export function FunnelChart() {
   const { goals, getTotais } = useDashboardStore();
   const totais = getTotais();
   const diaAtual = getDiaUtilAtual();
 
+  const { isAdmin } = useAuth();
   const steps = [
-    { label: "Leads / RM", value: totais.rm, meta: goals.metaRM },
+    ...(isAdmin ? [] : [{ label: "Leads / RM", value: totais.rm, meta: goals.metaRM }]),
     { label: "Reuniões Realizadas", value: totais.rr, meta: goals.metaRR },
     { label: "Contratos", value: totais.contratos, meta: goals.metaContratos },
   ];
@@ -50,9 +52,8 @@ export function FunnelChart() {
               <div className="relative" style={{ width: `${widthPct}%` }}>
                 <div className="w-full rounded-lg overflow-hidden" style={{ background: "hsl(var(--v4-surface))", height: "28px" }}>
                   <div
-                    className={`h-full rounded-lg transition-all duration-700 flex items-center justify-end pr-3 ${
-                      semaforo ? getSemaforoBgClass(semaforo) : "bg-secondary/30"
-                    }`}
+                    className={`h-full rounded-lg transition-all duration-700 flex items-center justify-end pr-3 ${semaforo ? getSemaforoBgClass(semaforo) : "bg-secondary/30"
+                      }`}
                     style={{ width: `${Math.min(pct * 100, 100)}%`, opacity: 0.7 }}
                   >
                     {step.value > 0 && (

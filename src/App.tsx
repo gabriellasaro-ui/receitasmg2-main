@@ -21,6 +21,7 @@ import {
   UserCheck,
   Target,
   LogOut,
+  User,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
@@ -39,11 +40,12 @@ import { ProposalAnalysis } from "@/components/ProposalAnalysis";
 import { PreSalesAnalysis } from "@/components/PreSalesAnalysis";
 import { GoalsSettings } from "@/components/GoalsSettings";
 import { UnitView } from "@/components/UnitView";
+import { ProfileView } from "@/components/ProfileView";
 import v4Logo from "@/assets/v4logo.png";
 
 const queryClient = new QueryClient();
 
-type Tab = "home" | "dashboard" | "ranking" | "pessoas" | "canais" | "formulario" | "conferencia" | "gestao" | "analise-propostas" | "analise-pv" | "aprovacao" | "metas" | "unidades";
+type Tab = "home" | "dashboard" | "ranking" | "pessoas" | "canais" | "formulario" | "conferencia" | "gestao" | "analise-propostas" | "analise-pv" | "aprovacao" | "metas" | "unidades" | "perfil";
 
 function AppContent() {
   const { user, isLoading, isApproved, isAdmin, profile, roles, signOut } = useAuth();
@@ -54,6 +56,8 @@ function AppContent() {
 
   useEffect(() => {
     if (!isApproved || !user) return;
+    // Garantir que ao logar, caia na Home
+    setActiveTab("home");
     const unitId = isAdmin ? null : profile?.unit_id || null;
     loadFromDB(unitId);
   }, [isApproved, isAdmin, profile?.unit_id, user]);
@@ -95,12 +99,14 @@ function AppContent() {
     { id: "unidades", label: "Unidades", icon: <LayoutDashboard className="w-4 h-4" />, adminOnly: true },
     { id: "metas", label: "Metas", icon: <Target className="w-4 h-4" /> },
     { id: "aprovacao", label: "Aprovação", icon: <UserCheck className="w-4 h-4" />, adminOnly: true },
+    { id: "perfil", label: "Perfil", icon: <User className="w-4 h-4" /> },
   ];
 
   const visibleTabs = tabs.filter((t) => {
     if (t.adminOnly && !isAdmin) return false;
     if (t.hideForAdmin && isAdmin) return false;
     if (t.id === "metas" && !isAdmin && !isGerente) return false;
+    if (t.id === "gestao" && !isGerente) return false;
     return true;
   });
 
@@ -108,29 +114,42 @@ function AppContent() {
   if (activeTab === "home") {
     return (
       <div className="min-h-screen bg-background">
-        <header className="fixed top-0 right-0 z-50 p-4 flex items-center gap-2">
-          <ThemeToggle />
-          <nav className="hidden md:flex items-center gap-1 bg-card/80 backdrop-blur-xl border border-border/60 rounded-xl px-2 py-1.5 shadow-lg">
-            {visibleTabs.filter(t => t.id !== "home").map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleNavigate(tab.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-          <button onClick={signOut} className="p-2 rounded-lg bg-card/80 backdrop-blur-xl border border-border/60 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Sair">
-            <LogOut className="w-4 h-4" />
-          </button>
-          <button
-            className="md:hidden p-2 rounded-lg bg-card/80 backdrop-blur-xl border border-border/60 hover:bg-secondary transition-colors"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+        <header className="fixed top-0 right-0 z-50 p-4 flex items-center justify-end pointer-events-none">
+          {/* Menu Desktop */}
+          <div className="hidden md:flex items-center gap-1 bg-card/80 backdrop-blur-xl border border-border/60 rounded-xl px-2 py-1.5 shadow-lg pointer-events-auto">
+            <ThemeToggle />
+            <div className="w-px h-5 bg-border/60 mx-1" />
+
+            <nav className="flex items-center gap-1">
+              {visibleTabs.filter(t => t.id !== "home").map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleNavigate(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="w-px h-5 bg-border/60 mx-1" />
+            <button onClick={signOut} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Sair">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Menu Mobile */}
+          <div className="md:hidden flex items-center gap-1 bg-card/80 backdrop-blur-xl border border-border/60 rounded-xl px-2 py-1.5 shadow-lg pointer-events-auto">
+            <ThemeToggle />
+            <div className="w-px h-5 bg-border/60 mx-1" />
+            <button
+              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </header>
 
         {mobileMenuOpen && (
@@ -178,11 +197,10 @@ function AppContent() {
                 <button
                   key={tab.id}
                   onClick={() => handleNavigate(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 ${activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                    }`}
                 >
                   {tab.icon}
                   {tab.label}
@@ -210,11 +228,10 @@ function AppContent() {
               <button
                 key={tab.id}
                 onClick={() => { handleNavigate(tab.id); setMobileMenuOpen(false); }}
-                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-secondary"
-                }`}
+                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
+                  }`}
               >
                 <div className="flex items-center gap-3">{tab.icon}{tab.label}</div>
                 <ChevronRight className="w-4 h-4 opacity-40" />
@@ -263,6 +280,7 @@ function AppContent() {
           {activeTab === "unidades" && isAdmin && <UnitView />}
           {activeTab === "metas" && (isAdmin || isGerente) && <GoalsSettings />}
           {activeTab === "aprovacao" && isAdmin && <AdminApproval />}
+          {activeTab === "perfil" && <ProfileView />}
         </div>
       </main>
     </div>

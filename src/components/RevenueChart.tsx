@@ -1,5 +1,5 @@
 import { useDashboardStore } from "@/data/store";
-import { formatCurrency, getDiaUtilAtual, calcIdealDia } from "@/data/seedData";
+import { formatCurrency, getDiaUtilAtual, calcIdealDia, getBusinessDaysInMarch } from "@/data/seedData";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { Activity } from "lucide-react";
 
@@ -8,19 +8,21 @@ export function RevenueChart() {
   const diaAtual = getDiaUtilAtual();
   const hasData = closerSubmissions.length > 0 || pvSubmissions.length > 0;
 
+  const businessDays = getBusinessDaysInMarch();
   const dailyData: { dia: number; realizado: number; ideal: number }[] = [];
   let acumulado = 0;
 
   for (let d = 1; d <= goals.diasUteisTotal; d++) {
     const ideal = calcIdealDia(goals.metaReceitaTotal, d, goals.diasUteisTotal);
-    if (d <= diaAtual && hasData) {
-      const dateStr = `2026-03-${String(d + 1).padStart(2, "0")}`;
+    const dateStr = businessDays[d - 1];
+
+    if (d <= diaAtual && hasData && dateStr) {
       const pvDia = pvSubmissions.filter((s) => s.dataReferencia === dateStr).reduce((a, s) => a + s.valorContratoTotal, 0);
       const clDia = closerSubmissions.filter((s) => s.dataReferencia === dateStr).reduce((a, s) => a + s.valorContratoTotal, 0);
       acumulado += pvDia + clDia;
       dailyData.push({ dia: d, realizado: acumulado, ideal });
     } else {
-      dailyData.push({ dia: d, realizado: 0, ideal });
+      dailyData.push({ dia: d, realizado: d <= diaAtual ? acumulado : 0, ideal });
     }
   }
 

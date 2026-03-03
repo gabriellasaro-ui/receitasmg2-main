@@ -12,19 +12,22 @@ interface Profile {
   email: string;
   unit_id: string | null;
   status: ApprovalStatus;
+  role?: AppRole; // Added based on the provided Code Edit's Profile structure
+  avatar_url?: string; // Added based on the instruction
 }
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
-  roles: AppRole[];
+  roles: string[]; // Changed from AppRole[] to string[] as per Code Edit
   isLoading: boolean;
   isAdmin: boolean;
   isApproved: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName: string, role: AppRole, unitId: string) => Promise<{ error: string | null }>;
+  signIn: (e: string, p: string) => Promise<{ error: string | null }>;
+  signUp: (e: string, p: string, f: string, r: AppRole, u: string, avatarUrl: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,12 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: AppRole, unitId: string) => {
+  const signUp = async (email: string, password: string, fullName: string, role: AppRole, unitId: string, avatarUrl: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role, unit_id: unitId },
+        data: { full_name: fullName, role, unit_id: unitId, avatar_url: avatarUrl },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -122,9 +125,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = roles.includes("admin");
   const isApproved = profile?.status === "approved";
 
+  const refreshProfile = async () => {
+    if (!user) return;
+    const { data: p } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+    if (p) {
+      setProfile(p as any as Profile);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, roles, isLoading, isAdmin, isApproved, signIn, signUp, signOut }}
+      value={{ user, session, profile, roles, isLoading, isAdmin, isApproved, signIn, signUp, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
