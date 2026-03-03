@@ -1,0 +1,257 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 80% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 30%;
+
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 152 56% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 80% 48%;
+
+    --radius: 0.75rem;
+
+    --v4-red: 0 80% 48%;
+    --v4-green: 152 56% 42%;
+    --v4-yellow: 43 96% 56%;
+    --v4-orange: 25 95% 53%;
+    --v4-dark: 0 0% 4%;
+    --v4-card-dark: 0 0% 7%;
+    --v4-card-hover: 0 0% 96%;
+    --v4-border-subtle: 0 0% 85%;
+    --v4-surface: 0 0% 95%;
+
+    --sidebar-background: 0 0% 97%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 0 80% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 80% 48%;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 0 80% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 80%;
+
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 152 56% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 13%;
+    --input: 0 0% 13%;
+    --ring: 0 80% 48%;
+
+    --v4-card-hover: 0 0% 9%;
+    --v4-border-subtle: 0 0% 15%;
+    --v4-surface: 0 0% 10%;
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 0 80% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 0 80% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+}
+
+@layer components {
+  /* ── Card System ── */
+  .kpi-card {
+    @apply bg-card border border-border rounded-2xl p-6 transition-all duration-300;
+  }
+  .kpi-card:hover {
+    background: hsl(var(--v4-card-hover));
+    border-color: hsl(var(--v4-border-subtle));
+  }
+
+  /* ── Typography Scale ── */
+  .kpi-value {
+    @apply text-[28px] font-bold tracking-tight leading-none;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-value-lg {
+    @apply text-[36px] font-bold tracking-tighter leading-none;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-value-sm {
+    @apply text-lg font-bold tracking-tight leading-none;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-label {
+    @apply text-[11px] uppercase tracking-[0.1em] text-muted-foreground font-medium leading-none;
+  }
+
+  /* ── Mono / Tabular Numbers ── */
+  .mono {
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Section Title ── */
+  .section-title {
+    @apply text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-semibold;
+  }
+
+  /* ── Semaphore System (4-state) ── */
+  .semaforo-verde { color: hsl(var(--v4-green)); }
+  .semaforo-amarelo { color: hsl(var(--v4-yellow)); }
+  .semaforo-laranja { color: hsl(var(--v4-orange)); }
+  .semaforo-vermelho { color: hsl(var(--v4-red)); }
+
+  .bg-semaforo-verde { background-color: hsl(var(--v4-green)); }
+  .bg-semaforo-amarelo { background-color: hsl(var(--v4-yellow)); }
+  .bg-semaforo-laranja { background-color: hsl(var(--v4-orange)); }
+  .bg-semaforo-vermelho { background-color: hsl(var(--v4-red)); }
+
+  /* ── Semaphore Badge ── */
+  .semaforo-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold leading-none;
+  }
+  .semaforo-badge-verde {
+    @apply semaforo-badge;
+    background: hsl(var(--v4-green) / 0.12);
+    color: hsl(var(--v4-green));
+    border: 1px solid hsl(var(--v4-green) / 0.2);
+  }
+  .semaforo-badge-amarelo {
+    @apply semaforo-badge;
+    background: hsl(var(--v4-yellow) / 0.12);
+    color: hsl(var(--v4-yellow));
+    border: 1px solid hsl(var(--v4-yellow) / 0.2);
+  }
+  .semaforo-badge-laranja {
+    @apply semaforo-badge;
+    background: hsl(var(--v4-orange) / 0.12);
+    color: hsl(var(--v4-orange));
+    border: 1px solid hsl(var(--v4-orange) / 0.2);
+  }
+  .semaforo-badge-vermelho {
+    @apply semaforo-badge;
+    background: hsl(var(--v4-red) / 0.12);
+    color: hsl(var(--v4-red));
+    border: 1px solid hsl(var(--v4-red) / 0.2);
+  }
+
+  /* ── Table Styles ── */
+  .table-header-v4 {
+    @apply bg-secondary/50 text-muted-foreground font-medium text-[11px] uppercase tracking-[0.08em] border-b border-border;
+  }
+  .table-row-v4 {
+    @apply border-b border-border/40 transition-colors duration-150;
+  }
+  .table-row-v4:hover {
+    background: hsl(var(--v4-surface) / 0.5);
+  }
+  .table-row-v4:nth-child(even) {
+    background: hsl(var(--v4-surface) / 0.2);
+  }
+  .table-row-v4:nth-child(even):hover {
+    background: hsl(var(--v4-surface) / 0.5);
+  }
+
+  /* ── Progress Bar ── */
+  .progress-track {
+    @apply w-full rounded-full overflow-hidden;
+    background: hsl(var(--v4-surface));
+    height: 6px;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+  }
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
