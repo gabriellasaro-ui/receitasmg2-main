@@ -71,6 +71,7 @@ export interface DailySubmissionPreVendas {
   valorRecorrente: number;
   valorOnetime: number;
   churnM0: number;
+  linkedCloserId?: string; // ID do Closer vinculado ao contrato
   observacoes?: string;
   submittedAt: string;
 }
@@ -90,6 +91,7 @@ export interface DailySubmissionCloser {
   churnM0: number;
   temperaturaCall: "frio" | "morno" | "quente";
   temperaturaProposta: "frio" | "morno" | "quente";
+  linkedSdrId?: string; // ID do SDR vinculado à venda
   observacoes?: string;
   submittedAt: string;
 }

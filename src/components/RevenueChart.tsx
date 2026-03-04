@@ -27,7 +27,11 @@ export function RevenueChart() {
   }
 
   return (
-    <div className="kpi-card">
+    <div className="kpi-card group">
+      {/* Subtle Shine */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+        <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+      </div>
       <div className="flex items-center justify-between mb-6">
         <p className="section-title">Faturamento Acumulado vs Ideal</p>
         {hasData && (
@@ -42,7 +46,7 @@ export function RevenueChart() {
           <p className="text-sm">Aguardando lançamentos</p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={dailyData}>
             <defs>
               <linearGradient id="colorRealizado" x1="0" y1="0" x2="0" y2="1">

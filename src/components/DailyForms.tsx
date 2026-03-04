@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDashboardStore } from "@/data/store";
 import { channels } from "@/data/seedData";
 import { useUnitData } from "@/hooks/useUnitData";
@@ -16,21 +16,31 @@ import { CheckCircle, Send, AlertCircle, ChevronDown, Plus, Trash2 } from "lucid
 
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-[12px] font-medium text-muted-foreground flex items-center gap-1">
+    <div className="space-y-2 group/field">
+      <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5 transition-colors group-focus-within/field:text-primary">
         {label}
-        {required && <span className="text-primary text-[10px]">*</span>}
+        {required && (
+          <span className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-bold animate-pulse">
+            !
+          </span>
+        )}
       </label>
-      {children}
+      <div className="relative transition-all duration-300 group-focus-within/field:translate-x-1">
+        {children}
+      </div>
     </div>
   );
 }
 
 function FormSection({ title, children, cols }: { title: string; children: React.ReactNode; cols?: string }) {
   return (
-    <div className="space-y-3">
-      <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground font-medium border-b border-border/50 pb-2">{title}</p>
-      <div className={`grid grid-cols-1 ${cols || "sm:grid-cols-2"} gap-4`}>
+    <div className="space-y-4 p-6 rounded-[2rem] bg-secondary/20 border border-white/5 relative overflow-hidden group/section">
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover/section:bg-primary transition-colors duration-500" />
+      <div className="flex items-center gap-3 border-b border-border/50 pb-3 mb-2">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover/section:bg-primary animate-pulse" />
+        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-semibold opacity-70 group-hover/section:opacity-100 transition-opacity">{title}</p>
+      </div>
+      <div className={`grid grid-cols-1 ${cols || "sm:grid-cols-2"} gap-6`}>
         {children}
       </div>
     </div>
@@ -39,23 +49,34 @@ function FormSection({ title, children, cols }: { title: string; children: React
 
 function DetailBlockHeader({ title, index, filled }: { title: string; index: number; filled: boolean }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold ${filled ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"}`}>
+    <div className="flex items-center gap-3 py-1">
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-semibold transition-all duration-300 ${filled ? "bg-primary shadow-[0_0_15px_rgba(var(--primary),0.3)] text-white" : "bg-secondary text-muted-foreground/40 border border-white/5"}`}>
         {index + 1}
       </div>
-      <span className="text-[13px] font-medium">{title} {index + 1}</span>
-      {filled && <CheckCircle className="w-3 h-3 text-primary" />}
+      <div className="flex flex-col items-start">
+        <span className={`text-[13px] font-semibold uppercase tracking-tight transition-colors ${filled ? "text-foreground" : "text-muted-foreground/60"}`}>{title}</span>
+        {filled && <span className="text-[9px] font-semibold text-primary uppercase tracking-widest animate-fadeIn">Validado ✓</span>}
+      </div>
     </div>
   );
 }
 
 function CompletionCounter({ label, filled, total }: { label: string; filled: number; total: number }) {
+  const isComplete = filled === total && total > 0;
   return (
-    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/60 border border-border/40">
-      <span className="text-[11px] text-muted-foreground">{label}:</span>
-      <span className={`text-[12px] font-bold tabular ${filled === total ? "text-primary" : "text-muted-foreground"}`}>
-        {filled}/{total} preenchidas
-      </span>
+    <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all duration-500 ${isComplete ? "bg-primary/10 border-primary/30 shadow-[0_0_20px_rgba(var(--primary),0.1)]" : "bg-secondary/40 border-white/5"}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{label}</p>
+      <div className="flex items-center gap-3">
+        <div className="h-1.5 w-24 bg-black/20 rounded-full overflow-hidden hidden sm:block">
+          <div
+            className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+            style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }}
+          />
+        </div>
+        <span className={`text-[12px] font-semibold tabular ${isComplete ? "text-primary animate-pulse" : "text-foreground/60"}`}>
+          {filled} de {total}
+        </span>
+      </div>
     </div>
   );
 }
@@ -81,6 +102,7 @@ interface SaleDetail {
   valorRecorrente: number;
   valorOnetime: number;
   churnM0: number;
+  sdrId?: string; // SDR vinculado
 }
 
 interface CallDetail {
@@ -90,12 +112,12 @@ interface CallDetail {
 }
 
 const emptyProposal = (): ProposalDetail => ({ leadNome: "", canalProposta: "", temperatura: "morno", valorProposta: 0, observacao: "" });
-const emptySale = (): SaleDetail => ({ leadNome: "", canalVenda: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0 });
+const emptySale = (): SaleDetail => ({ leadNome: "", canalVenda: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0, sdrId: "" });
 const emptyCall = (): CallDetail => ({ leadNome: "", temperatura: "morno", resultado: "" });
 
 export function DailyFormCloser() {
   const { addCloserSubmission } = useDashboardStore();
-  const { closers: unitClosers, userUnitId } = useUnitData();
+  const { closers: unitClosers, preVendas: unitSDRs, userUnitId } = useUnitData();
   const { profile, roles } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -117,6 +139,14 @@ export function DailyFormCloser() {
   const [proposals, setProposals] = useState<ProposalDetail[]>([]);
   const [sales, setSales] = useState<SaleDetail[]>([]);
   const [calls, setCalls] = useState<CallDetail[]>([]);
+  const isManagerOrAdmin = roles?.includes("admin") || roles?.includes("gerente_unidade");
+
+  // Auto-fill userId for non-managers
+  useEffect(() => {
+    if (profile?.user_id && !isManagerOrAdmin) {
+      setForm(prev => ({ ...prev, userId: profile.user_id }));
+    }
+  }, [profile, isManagerOrAdmin]);
 
   // Sync dynamic blocks with counts
   const syncProposals = useCallback((count: number) => {
@@ -238,6 +268,7 @@ export function DailyFormCloser() {
             valor_recorrente: s.valorRecorrente,
             valor_onetime: s.valorOnetime,
             churn_m0: s.churnM0,
+            observacoes: s.sdrId ? `SDR Vinculado: ${s.sdrId}` : null
           }))
         );
         if (error) throw error;
@@ -269,7 +300,7 @@ export function DailyFormCloser() {
         userId: form.userId,
         channelId: sales[0]?.canalVenda || "",
         callsRealizadas: Math.max(form.callsRealizadas, form.contratosAssinados > 0 ? 1 : 0),
-        no_show: form.noShow,
+        noShow: form.noShow,
         contratosAssinados: form.contratosAssinados,
         propostasRealizadas: form.propostasRealizadas,
         valorContratoTotal: effectiveFinancials.valorTotal,
@@ -311,25 +342,36 @@ export function DailyFormCloser() {
     setCalls(prev => prev.map((c, idx) => idx === i ? { ...c, [field]: value } : c));
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="kpi-card space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-1.5 h-6 bg-primary rounded-full" />
+    <form onSubmit={handleSubmit} className="group relative glass-panel rounded-[2.5rem] p-8 sm:p-10 border-white/10 shadow-2xl transition-all duration-500 overflow-hidden space-y-10">
+      {/* Brilliant Shine Effect */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+        <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="w-2 h-8 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
         <div>
-          <h3 className="text-[14px] font-semibold">Formulário Closer</h3>
-          <p className="text-[11px] text-muted-foreground">Preencha até às 20h</p>
+          <h3 className="text-lg font-semibold tracking-tight">Formulário Closer</h3>
+          <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest opacity-60">Janela de lançamento até às 20h</p>
         </div>
       </div>
 
       {/* ── Identificação ── */}
-      <FormSection title="Identificação">
-        <FormField label="Closer" required>
-          <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>{unitClosers.map((c) => <SelectItem key={c.userId} value={c.userId}>{c.fullName}</SelectItem>)}</SelectContent>
-          </Select>
-        </FormField>
-      </FormSection>
+      {isManagerOrAdmin && (
+        <FormSection title="Identificação">
+          <FormField label="Closer" required>
+            <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{unitClosers.map((c) => <SelectItem key={c.userId} value={c.userId}>{c.fullName}</SelectItem>)}</SelectContent>
+            </Select>
+          </FormField>
+        </FormSection>
+      )}
 
       {/* ── Atividade ── */}
       <FormSection title="Atividade">
@@ -361,11 +403,11 @@ export function DailyFormCloser() {
               <CompletionCounter label="Calls detalhadas" filled={callsFilled} total={form.callsRealizadas} />
               <Accordion type="multiple" className="space-y-2">
                 {calls.map((call, i) => (
-                  <AccordionItem key={i} value={`call-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                  <AccordionItem key={i} value={`call-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
                       <DetailBlockHeader title="Call" index={i} filled={!!call.leadNome.trim()} />
                     </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
+                    <AccordionContent className="px-6 pb-6">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <FormField label="Lead/Projeto">
                           <Input value={call.leadNome} onChange={(e) => updateCall(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
@@ -408,11 +450,11 @@ export function DailyFormCloser() {
           <CompletionCounter label="Propostas detalhadas" filled={proposalsFilled} total={form.propostasRealizadas} />
           <Accordion type="multiple" defaultValue={proposals.map((_, i) => `prop-${i}`)} className="space-y-2">
             {proposals.map((prop, i) => (
-              <AccordionItem key={i} value={`prop-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <AccordionItem key={i} value={`prop-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Proposta" index={i} filled={!!prop.leadNome.trim()} />
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-6 pb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label="Lead/Projeto" required>
                       <Input value={prop.leadNome} onChange={(e) => updateProposal(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
@@ -456,14 +498,22 @@ export function DailyFormCloser() {
           <CompletionCounter label="Vendas detalhadas" filled={salesFilled} total={form.contratosAssinados} />
           <Accordion type="multiple" defaultValue={sales.map((_, i) => `sale-${i}`)} className="space-y-2">
             {sales.map((sale, i) => (
-              <AccordionItem key={i} value={`sale-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <AccordionItem key={i} value={`sale-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Venda" index={i} filled={!!sale.leadNome.trim() && !!sale.canalVenda} />
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-6 pb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label="Lead/Projeto" required>
                       <Input value={sale.leadNome} onChange={(e) => updateSale(i, "leadNome", e.target.value)} placeholder="Nome do lead vendido" />
+                    </FormField>
+                    <FormField label="SDR Responsável (Pré-Venda)">
+                      <Select value={sale.sdrId} onValueChange={(v) => updateSale(i, "sdrId", v)}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o SDR" /></SelectTrigger>
+                        <SelectContent>
+                          {unitSDRs.map(s => <SelectItem key={s.userId} value={s.userId}>{s.fullName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </FormField>
                     <FormField label="Canal da Venda" required>
                       <Select value={sale.canalVenda} onValueChange={(v) => updateSale(i, "canalVenda", v)}>
@@ -558,15 +608,16 @@ interface PvContractDetail {
   valorRecorrente: number;
   valorOnetime: number;
   churnM0: number;
+  closerId?: string; // Closer vinculado
 }
 
 const emptyBookedCall = (): BookedCallDetail => ({ leadNome: "", tipoLead: "", punch: "", canal: "" });
 const emptyRealizedCall = (): RealizedCallDetail => ({ leadNome: "", tipoLead: "", observacao: "" });
-const emptyPvContract = (): PvContractDetail => ({ leadNome: "", canal: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0 });
+const emptyPvContract = (): PvContractDetail => ({ leadNome: "", canal: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0, closerId: "" });
 
 export function DailyFormPreVendas() {
   const { addPvSubmission } = useDashboardStore();
-  const { preVendas: unitPreVendas, userUnitId } = useUnitData();
+  const { preVendas: unitPreVendas, closers: unitClosers, userUnitId } = useUnitData();
   const { profile, roles } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -588,6 +639,14 @@ export function DailyFormPreVendas() {
   const [bookedCalls, setBookedCalls] = useState<BookedCallDetail[]>([]);
   const [realizedCalls, setRealizedCalls] = useState<RealizedCallDetail[]>([]);
   const [pvContracts, setPvContracts] = useState<PvContractDetail[]>([]);
+  const isManagerOrAdmin = roles?.includes("admin") || roles?.includes("gerente_unidade");
+
+  // Auto-fill userId for non-managers
+  useEffect(() => {
+    if (profile?.user_id && !isManagerOrAdmin) {
+      setForm(prev => ({ ...prev, userId: profile.user_id }));
+    }
+  }, [profile, isManagerOrAdmin]);
 
   const syncBookedCalls = useCallback((count: number) => {
     setBookedCalls(prev => {
@@ -727,6 +786,7 @@ export function DailyFormPreVendas() {
             valor_recorrente: c.valorRecorrente,
             valor_onetime: c.valorOnetime,
             churn_m0: c.churnM0,
+            observacoes: c.closerId ? `Closer Vinculado: ${c.closerId}` : null
           }))
         );
         if (error) throw error;
@@ -766,23 +826,30 @@ export function DailyFormPreVendas() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="kpi-card space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-1.5 h-6 bg-accent rounded-full" />
+    <form onSubmit={handleSubmit} className="group relative glass-panel rounded-[2.5rem] p-8 sm:p-10 border-white/10 shadow-2xl transition-all duration-500 overflow-hidden space-y-10">
+      {/* Brilliant Shine Effect */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+        <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="w-2 h-8 bg-accent rounded-full shadow-[0_0_15px_rgba(var(--accent),0.3)]" />
         <div>
-          <h3 className="text-[14px] font-semibold">Formulário Pré-Vendas</h3>
-          <p className="text-[11px] text-muted-foreground">Preencha até às 20h</p>
+          <h3 className="text-lg font-semibold tracking-tight">Formulário Pré-Vendas</h3>
+          <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-widest opacity-60">Janela de lançamento até às 20h</p>
         </div>
       </div>
 
-      <FormSection title="Identificação">
-        <FormField label="Pré-Vendas" required>
-          <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
-            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-            <SelectContent>{unitPreVendas.map((p) => <SelectItem key={p.userId} value={p.userId}>{p.fullName}</SelectItem>)}</SelectContent>
-          </Select>
-        </FormField>
-      </FormSection>
+      {isManagerOrAdmin && (
+        <FormSection title="Identificação">
+          <FormField label="Pré-Vendas" required>
+            <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
+              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+              <SelectContent>{unitPreVendas.map((p) => <SelectItem key={p.userId} value={p.userId}>{p.fullName}</SelectItem>)}</SelectContent>
+            </Select>
+          </FormField>
+        </FormSection>
+      )}
 
       <FormSection title="Atividade">
         <FormField label="Calls Marcadas">
@@ -806,11 +873,11 @@ export function DailyFormPreVendas() {
           <CompletionCounter label="Calls marcadas detalhadas" filled={bookedFilled} total={form.callsMarcadas} />
           <Accordion type="multiple" defaultValue={bookedCalls.map((_, i) => `booked-${i}`)} className="space-y-2">
             {bookedCalls.map((bc, i) => (
-              <AccordionItem key={i} value={`booked-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <AccordionItem key={i} value={`booked-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Call Marcada" index={i} filled={!!bc.leadNome.trim()} />
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-6 pb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label="Lead/Projeto" required>
                       <Input value={bc.leadNome} onChange={(e) => updateBooked(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
@@ -849,11 +916,11 @@ export function DailyFormPreVendas() {
           <CompletionCounter label="Calls realizadas detalhadas" filled={realizedFilled} total={form.callsRealizadas} />
           <Accordion type="multiple" defaultValue={realizedCalls.map((_, i) => `realized-${i}`)} className="space-y-2">
             {realizedCalls.map((rc, i) => (
-              <AccordionItem key={i} value={`realized-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <AccordionItem key={i} value={`realized-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Call Realizada" index={i} filled={!!rc.leadNome.trim()} />
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-6 pb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label="Lead/Projeto" required>
                       <Input value={rc.leadNome} onChange={(e) => updateRealized(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
@@ -892,14 +959,22 @@ export function DailyFormPreVendas() {
           <CompletionCounter label="Contratos detalhados" filled={contractsFilled} total={form.contratosAssinados} />
           <Accordion type="multiple" defaultValue={pvContracts.map((_, i) => `contract-${i}`)} className="space-y-2">
             {pvContracts.map((ct, i) => (
-              <AccordionItem key={i} value={`contract-${i}`} className="border border-border/60 rounded-xl overflow-hidden">
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <AccordionItem key={i} value={`contract-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Contrato" index={i} filled={!!ct.leadNome.trim()} />
                 </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
+                <AccordionContent className="px-6 pb-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label="Lead/Projeto" required>
                       <Input value={ct.leadNome} onChange={(e) => updateContract(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
+                    </FormField>
+                    <FormField label="Closer Responsável">
+                      <Select value={ct.closerId || ""} onValueChange={(v) => updateContract(i, "closerId", v)}>
+                        <SelectTrigger><SelectValue placeholder="Selecione o Closer" /></SelectTrigger>
+                        <SelectContent>
+                          {unitClosers.map(c => <SelectItem key={c.userId} value={c.userId}>{c.fullName}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </FormField>
                     <FormField label="Canal">
                       <Select value={ct.canal} onValueChange={(v) => updateContract(i, "canal", v)}>

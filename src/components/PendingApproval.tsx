@@ -1,4 +1,3 @@
-import v4Logo from "@/assets/v4logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Clock, LogOut, X } from "lucide-react";
@@ -13,7 +12,9 @@ export function PendingApproval() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#F8F9FA]">
       <div className="absolute inset-0 bg-white" />
       <div className="relative z-10 text-center max-w-md px-6 animate-fadeIn">
-        <img src={v4Logo} alt="V4 Company" className="h-10 mx-auto mb-10 [filter:brightness(0)_invert(19%)_sepia(97%)_saturate(7404%)_hue-rotate(357deg)_brightness(101%)_contrast(117%)]" />
+        <div className="w-20 h-20 bg-primary flex items-center justify-center rounded-3xl shadow-2xl shadow-primary/20 mx-auto mb-10 rotate-3 animate-fadeIn">
+          <span className="text-white text-3xl font-black italic tracking-tighter">MG2</span>
+        </div>
 
         {isPending && (
           <div className="space-y-6">

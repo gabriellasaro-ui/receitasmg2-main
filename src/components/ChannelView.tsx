@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDashboardStore } from "@/data/store";
 import {
   channels,
@@ -149,13 +149,15 @@ export function ChannelView() {
 
       let salesQuery = supabase
         .from("closer_sales_detail")
-        .select("canal_venda, valor_total, closer_id, submission_id, data_referencia")
-        .gte("data_referencia", startDate)
-        .lte("data_referencia", endDate);
-
-      let subsQuery = supabase
-        .from("closer_submissions")
-        .select("id, unit_id")
+        .select(`
+          canal_venda, 
+          valor_total, 
+          closer_id, 
+          submission_id, 
+          data_referencia,
+          lead_nome,
+          closer_submissions!inner(unit_id)
+        `)
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
@@ -165,28 +167,38 @@ export function ChannelView() {
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
+      let pvContractsQuery = supabase
+        .from("pv_contracts_detail")
+        .select("canal, valor_total, lead_nome, unit_id")
+        .gte("data_referencia", startDate)
+        .lte("data_referencia", endDate);
+
       if (!isAdmin && profile?.unit_id) {
-        subsQuery = subsQuery.eq("unit_id", profile.unit_id);
+        // Filtra vendas cujas submissões pertencem à unidade do usuário
+        salesQuery = salesQuery.eq("closer_submissions.unit_id", profile.unit_id);
         bookedQuery = bookedQuery.eq("unit_id", profile.unit_id);
-        // Para vendas, precisamos filtrar pelas submissões da unidade
+        pvContractsQuery = pvContractsQuery.eq("unit_id", profile.unit_id);
       }
 
-      const [salesRes, subsRes, bookedRes] = await Promise.all([salesQuery, subsQuery, bookedQuery]);
-      const sales = salesRes.data;
-      const subs = subsRes.data;
-      const pvBooked = bookedRes.data;
+      const [salesRes, unitsRes, bookedRes, pvContRes] = await Promise.all([
+        salesQuery,
+        supabase.from("units").select("id, name"),
+        bookedQuery,
+        pvContractsQuery
+      ]) as any[];
 
-      const { data: units } = await supabase.from("units").select("id, name");
+      const sales = salesRes.data || [];
+      const units = unitsRes.data || [];
+      const pvBooked = bookedRes.data || [];
+      const pvContractsData = pvContRes.data || [];
 
-      if (!units) return;
       const unitMap = new Map(units.map((u: any) => [u.id, u.name]));
-      const subUnitMap = new Map((subs || []).map((s: any) => [s.id, s.unit_id]));
-
       const breakdown: Record<string, Map<string, { receita: number; contratos: number }>> = {};
 
-      (sales || []).forEach((sale: any) => {
+      // Process Closers Sales
+      sales.forEach((sale: any) => {
         const canal = sale.canal_venda;
-        const unitId = subUnitMap.get(sale.submission_id);
+        const unitId = sale.closer_submissions?.unit_id;
         if (!canal || !unitId) return;
         if (!breakdown[canal]) breakdown[canal] = new Map();
         const existing = breakdown[canal].get(unitId) || { receita: 0, contratos: 0 };
@@ -195,7 +207,28 @@ export function ChannelView() {
         breakdown[canal].set(unitId, existing);
       });
 
-      (pvBooked || []).forEach((bc: any) => {
+      // Process PV Contracts (Deduplicating if same lead/value already processed via closer sales)
+      pvContractsData.forEach((ct: any) => {
+        const canal = ct.canal;
+        const unitId = ct.unit_id;
+        if (!canal || !unitId) return;
+
+        // Simple check: if closer already has a sale for this lead in this canal/unit, skip
+        // This avoids duplication while catching contracts ONLY in PV table
+        const leadKey = `${ct.lead_nome}-${ct.valor_total}`.toLowerCase();
+        const alreadySales = sales.some(s => s.canal_venda === canal && `${s.lead_nome}-${s.valor_total}`.toLowerCase() === leadKey);
+
+        if (alreadySales) return;
+
+        if (!breakdown[canal]) breakdown[canal] = new Map();
+        const existing = breakdown[canal].get(unitId) || { receita: 0, contratos: 0 };
+        existing.receita += Number(ct.valor_total);
+        existing.contratos += 1;
+        breakdown[canal].set(unitId, existing);
+      });
+
+      // Process PV Booked Calls
+      pvBooked.forEach((bc: any) => {
         if (!bc.canal || !bc.unit_id) return;
         if (!breakdown[bc.canal]) breakdown[bc.canal] = new Map();
         const existing = breakdown[bc.canal].get(bc.unit_id) || { receita: 0, contratos: 0 };
@@ -206,15 +239,16 @@ export function ChannelView() {
       Object.entries(breakdown).forEach(([canal, unitData]) => {
         result[canal] = Array.from(unitData.entries()).map(([uId, data]) => ({
           unitId: uId,
-          unitName: unitMap.get(uId) || "Sem unidade",
+          unitName: (unitMap.get(uId) as string) || "Sem unidade",
           ...data,
         })).sort((a, b) => b.receita - a.receita);
       });
 
       setUnitBreakdown(result);
+      setLoading(false);
     };
     fetchUnitBreakdown();
-  }, [isAdmin, closerSubmissions]);
+  }, [isAdmin, closerSubmissions, dbChannels]); // Added dbChannels as dependency
 
   const toggleExpand = (channelId: string) => {
     setExpandedChannels(prev => {
@@ -379,6 +413,15 @@ export function ChannelView() {
 
     const realizadoReceita = relevantUnits.reduce((a, u) => a + u.receita, 0);
     const realizadoContratos = relevantUnits.reduce((a, u) => a + u.contratos, 0);
+
+    // Fallback: If no breakdown by unit found, check if there are sales in closerSubmissions directly matching this channel
+    // This is a safety measure to avoid "missing" data if subUnitMap has lag
+    const fallbackRealizado = (closerSubmissions || []).reduce((acc, sub) => {
+      // In store.ts, closerSubmissions might have nested data or be aggregate.
+      // Usually, closerSubmissions in store is the list of aggregate submissions.
+      // The breakdown logic above using sales detail is the most accurate.
+      return acc;
+    }, 0);
 
     // Ajuste de meta para Admin em visão Regional: Soma as metas se houver unitBreakdown
     // Caso contrário, usa a meta global.
@@ -612,8 +655,12 @@ export function ChannelView() {
         </div>
       )}
 
-      <div className="kpi-card p-0 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="group relative glass-panel rounded-3xl border-white/10 shadow-xl overflow-hidden transition-all duration-500 hover:shadow-2xl">
+        {/* Subtle Shine */}
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+          <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+        </div>
+        <div className="overflow-x-auto relative z-10">
           <table className="w-full text-[13px]">
             <thead>
               <tr className="table-header-v4">

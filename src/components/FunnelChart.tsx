@@ -18,8 +18,13 @@ export function FunnelChart() {
   const maxMeta = Math.max(...steps.map((s) => s.meta));
 
   return (
-    <div className="kpi-card">
-      <p className="section-title mb-6">Funil de Vendas</p>
+    <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden">
+      {/* Subtle Shine */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+        <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+      </div>
+
+      <p className="kpi-label mb-8 opacity-60">Funil de Vendas</p>
       <div className="space-y-5">
         {steps.map((step, i) => {
           const pct = step.meta > 0 ? step.value / step.meta : 0;
@@ -53,8 +58,8 @@ export function FunnelChart() {
                 <div className="w-full rounded-lg overflow-hidden" style={{ background: "hsl(var(--v4-surface))", height: "28px" }}>
                   <div
                     className={`h-full rounded-lg transition-all duration-700 flex items-center justify-end pr-3 ${semaforo ? getSemaforoBgClass(semaforo) : "bg-secondary/30"
-                      }`}
-                    style={{ width: `${Math.min(pct * 100, 100)}%`, opacity: 0.7 }}
+                      } ${semaforo === "vermelho" || !semaforo ? "progress-glow" : ""}`}
+                    style={{ width: `${Math.min(pct * 100, 100)}%`, opacity: 0.9 }}
                   >
                     {step.value > 0 && (
                       <span className="text-[10px] font-bold text-white tabular">{formatPercent(pctIdeal)} pace</span>

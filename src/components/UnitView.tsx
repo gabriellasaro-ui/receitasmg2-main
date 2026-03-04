@@ -278,9 +278,9 @@ export function UnitView() {
 
 function KpiMini({ label, value, sub, compact }: { label: string; value: string; sub?: string; compact?: boolean }) {
   return (
-    <div className={`rounded-xl border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
+    <div className={`kpi-card ${compact ? "p-3" : "p-4"}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">{label}</p>
-      <p className={`font-bold tabular ${compact ? "text-sm" : "text-lg"}`}>{value}</p>
+      <p className={`font-semibold tabular ${compact ? "text-sm" : "text-lg"}`}>{value}</p>
       {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );

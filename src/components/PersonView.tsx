@@ -108,12 +108,16 @@ export function PersonView() {
               const conversao = ac.calls > 0 ? ac.contratos / ac.calls : 0;
 
               return (
-                <div key={c.userId} className="kpi-card relative overflow-hidden">
+                <div key={c.userId} className="group relative glass-panel rounded-3xl p-6 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
+                  {/* Subtle Shine */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+                  </div>
                   <div className="flex items-center gap-4 mb-5">
-                    <MemberAvatar name={c.fullName} avatarUrl={c.avatarUrl} className="w-12 h-12 shrink-0" />
+                    <MemberAvatar name={c.fullName} avatarUrl={c.avatarUrl} className="w-12 h-12 shrink-0 border-2 border-white/20 shadow-lg group-hover:scale-110 transition-transform" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[15px]">{c.fullName}</p>
-                      <span className="text-[11px] text-muted-foreground">{c.email}</span>
+                      <p className="font-semibold text-[15px] group-hover:text-primary transition-colors">{c.fullName}</p>
+                      <span className="text-[11px] text-muted-foreground font-medium opacity-60">{c.email}</span>
                     </div>
                   </div>
 
@@ -149,12 +153,16 @@ export function PersonView() {
               const showRate = ac.callsMarcadas > 0 ? ac.callsRealizadas / ac.callsMarcadas : 0;
 
               return (
-                <div key={p.userId} className="kpi-card relative overflow-hidden">
+                <div key={p.userId} className="group relative glass-panel rounded-3xl p-6 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
+                  {/* Subtle Shine */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+                    <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
+                  </div>
                   <div className="flex items-center gap-4 mb-5">
-                    <MemberAvatar name={p.fullName} avatarUrl={p.avatarUrl} className="w-12 h-12 shrink-0" />
+                    <MemberAvatar name={p.fullName} avatarUrl={p.avatarUrl} className="w-12 h-12 shrink-0 border-2 border-white/20 shadow-lg group-hover:scale-110 transition-transform" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[15px]">{p.fullName}</p>
-                      <span className="text-[11px] text-muted-foreground">{p.email}</span>
+                      <p className="font-semibold text-[15px] group-hover:text-primary transition-colors">{p.fullName}</p>
+                      <span className="text-[11px] text-muted-foreground font-medium opacity-60">{p.email}</span>
                     </div>
                   </div>
 

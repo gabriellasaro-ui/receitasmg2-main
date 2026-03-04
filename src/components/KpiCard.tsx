@@ -45,8 +45,8 @@ export function KpiCard({
 
   const displayValue =
     format === "currency" ? formatCurrency(value)
-    : format === "percent" ? formatPercent(value)
-    : formatNumber(value);
+      : format === "percent" ? formatPercent(value)
+        : formatNumber(value);
 
   const isLarge = size === "large";
   const isCompact = size === "compact";
@@ -54,60 +54,66 @@ export function KpiCard({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className={`kpi-card relative overflow-hidden group ${isLarge ? "p-8" : isCompact ? "p-4" : "p-6"}`}>
-          {/* Left accent stripe */}
+        <div className={`group relative glass-panel rounded-3xl border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden animate-fadeIn ${isLarge ? "p-8" : isCompact ? "p-4" : "p-6"}`}>
+          {/* Subtle Shine Effect on Hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
+            <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] animate-shine" />
+          </div>
+
+          {/* Left accent stripe (Semáforo) */}
           {semaforo && (
-            <div className={`absolute top-3 bottom-3 left-0 w-[3px] rounded-r-full ${getSemaforoBgClass(semaforo)}`} />
+            <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${getSemaforoBgClass(semaforo)} opacity-80`} />
           )}
 
-          <div className="relative">
+          <div className="relative z-10">
             {/* Header row: label + badge */}
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <p className="kpi-label">{label}</p>
+            <div className="flex items-start justify-between gap-2 mb-4">
+              <p className="kpi-label opacity-60 group-hover:opacity-100 transition-opacity">{label}</p>
               {semaforo && (
                 <SemaforoBadge status={semaforo} compact />
               )}
             </div>
 
             {/* Value */}
-            <p className={`tabular font-bold tracking-tight leading-none ${
-              isLarge ? "text-[36px]" : isCompact ? "text-lg" : "text-[28px]"
-            }`}>
+            <p className={`tabular font-semibold tracking-tighter leading-none group-hover:scale-[1.02] transition-transform duration-500 origin-left ${isLarge ? "text-4xl sm:text-5xl" : isCompact ? "text-xl" : "text-3xl"
+              }`}>
               {displayValue}
             </p>
 
             {/* Meta + progress */}
             {meta !== undefined && meta > 0 && (
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-6 space-y-3">
                 {/* Meta info row */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">
-                    Meta: {format === "currency" ? formatCurrency(meta) : formatNumber(meta)}
+                  <span className="text-[11px] font-medium text-muted-foreground/60">
+                    Meta: <span className="text-foreground/70">{format === "currency" ? formatCurrency(meta) : formatNumber(meta)}</span>
                   </span>
                   <span className={`text-[11px] font-semibold tabular ${getSemaforoColorClass(semaforo || "vermelho")}`}>
                     {formatPercent(pctMeta)}
                   </span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="progress-track">
+                {/* Progress bar (Custom styling) */}
+                <div className="h-1.5 w-full bg-secondary/30 rounded-full overflow-hidden">
                   <div
-                    className={`progress-fill ${getSemaforoBgClass(semaforo || "vermelho")}`}
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${getSemaforoBgClass(semaforo || "vermelho")} ${semaforo === "vermelho" || !semaforo ? "progress-glow" : ""}`}
                     style={{ width: `${Math.min(pctMeta * 100, 100)}%` }}
                   />
                 </div>
 
                 {/* Gap row */}
                 {value > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    {gap >= 0 ? (
-                      <ArrowUpRight className="w-3 h-3 semaforo-verde" />
-                    ) : (
-                      <ArrowDownRight className="w-3 h-3 semaforo-vermelho" />
-                    )}
-                    <span className={`text-[11px] font-medium tabular ${gap >= 0 ? "semaforo-verde" : "semaforo-vermelho"}`}>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <div className={`flex items-center justify-center w-4 h-4 rounded-full ${gap >= 0 ? "bg-semaforo-verde/10" : "bg-semaforo-vermelho/10"}`}>
+                      {gap >= 0 ? (
+                        <ArrowUpRight className="w-2.5 h-2.5 semaforo-verde" />
+                      ) : (
+                        <ArrowDownRight className="w-2.5 h-2.5 semaforo-vermelho" />
+                      )}
+                    </div>
+                    <span className={`text-[11px] font-semibold tabular ${gap >= 0 ? "semaforo-verde" : "semaforo-vermelho"}`}>
                       {format === "currency" ? formatCurrency(Math.abs(gap)) : formatNumber(Math.abs(gap))}
-                      {gap >= 0 ? " acima" : " abaixo"} do ideal
+                      <span className="opacity-60 font-medium font-sans"> {gap >= 0 ? "acima" : "abaixo"} do ideal</span>
                     </span>
                   </div>
                 )}

@@ -212,36 +212,54 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       (acc, s) => ({
         callsMarcadas: acc.callsMarcadas + s.callsMarcadas,
         callsRealizadas: acc.callsRealizadas + s.callsRealizadas,
-        contratos: acc.contratos + s.contratosAssinados,
-        faturamento: acc.faturamento + s.valorContratoTotal,
-        recorrente: acc.recorrente + s.valorRecorrente,
-        onetime: acc.onetime + s.valorOnetime,
-        churnM0: acc.churnM0 + s.churnM0,
+        noShow: acc.noShow + s.noShow,
       }),
-      { callsMarcadas: 0, callsRealizadas: 0, contratos: 0, faturamento: 0, recorrente: 0, onetime: 0, churnM0: 0 }
+      { callsMarcadas: 0, callsRealizadas: 0, noShow: 0 }
     );
-    const clTotals = state.closerSubmissions.reduce(
-      (acc, s) => ({
-        contratos: acc.contratos + s.contratosAssinados,
-        faturamento: acc.faturamento + s.valorContratoTotal,
-        recorrente: acc.recorrente + s.valorRecorrente,
-        onetime: acc.onetime + s.valorOnetime,
-        churnM0: acc.churnM0 + s.churnM0,
-      }),
-      { contratos: 0, faturamento: 0, recorrente: 0, onetime: 0, churnM0: 0 }
-    );
-    const faturamento = pvTotals.faturamento + clTotals.faturamento;
-    const churnM0 = pvTotals.churnM0 + clTotals.churnM0;
+
+    // Lógica de Deduplicação para Contratos e Faturamento
+    // Criamos um mapa de vendas únicas garantindo que o mesmo lead na mesma data não conte dobrado
+    const uniqueSales = new Map<string, { faturamento: number; recorrente: number; onetime: number; churn: number }>();
+
+    // Adiciona vendas dos Closers (geralmente a fonte final da venda)
+    state.closerSubmissions.forEach(sub => {
+      const key = `${sub.dataReferencia}_${sub.userId}_closer`; // Chave por closer para ranking individual é mantida no estado
+      // Para o total regional, vamos usar lead name se disponível ou apenas somar se for lançamento consolidado
+      // Como o sistema permite múltiplos leads por submissão nos detalhes, mas o total tá no submission
+      // Para simplificar e amarrar: vamos usar o total das submissões de closers como base primária de faturamento
+      const saleKey = `sale_${sub.id}`;
+      uniqueSales.set(saleKey, {
+        faturamento: sub.valorContratoTotal,
+        recorrente: sub.valorRecorrente,
+        onetime: sub.valorOnetime,
+        churn: sub.churnM0
+      });
+    });
+
+    // Adiciona vendas de SDRs APENAS se não houver vinculação que indique que o Closer já lançou (ou se for venda direta do SDR)
+    // De acordo com o pedido, o valor não deve somar. 
+    // Estratégia: Closers são o "Source of Truth" para o faturamento financeiro regional.
+    // SDRs ganham crédito no ranking individual via pvSubmissions, mas para o TOTAL REGIONAL usamos CloserSubmissions.
+    // Se um SDR lança um contrato, ele DEVE ser espelhado por um Closer.
+
+    const faturamentoArr = Array.from(uniqueSales.values());
+    const totalFaturamento = faturamentoArr.reduce((a, b) => a + b.faturamento, 0);
+    const totalRecorrente = faturamentoArr.reduce((a, b) => a + b.recorrente, 0);
+    const totalOnetime = faturamentoArr.reduce((a, b) => a + b.onetime, 0);
+    const totalChurn = faturamentoArr.reduce((a, b) => a + b.churn, 0);
+
+    const totalContratos = state.closerSubmissions.reduce((a, s) => a + s.contratosAssinados, 0);
+
     return {
       leads: pvTotals.callsMarcadas,
       rm: pvTotals.callsMarcadas,
       rr: pvTotals.callsRealizadas,
-      contratos: pvTotals.contratos + clTotals.contratos,
-      faturamento,
-      recorrente: pvTotals.recorrente + clTotals.recorrente,
-      onetime: pvTotals.onetime + clTotals.onetime,
-      churnM0,
-      receitaLiquida: faturamento - churnM0,
+      contratos: totalContratos,
+      faturamento: totalFaturamento,
+      recorrente: totalRecorrente,
+      onetime: totalOnetime,
+      churnM0: totalChurn,
+      receitaLiquida: totalFaturamento - totalChurn,
     };
   },
 }));

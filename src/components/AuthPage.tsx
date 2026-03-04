@@ -276,18 +276,32 @@ export function AuthPage() {
         </div>
       </div>
 
-      {/* Lado Direito - Identidade Visual Branca com Logo Vermelha */}
-      <div className="flex-1 hidden md:flex flex-col items-center justify-center relative w-full h-screen overflow-hidden bg-slate-50 border-l border-slate-200">
+      {/* Lado Direito - Identidade Visual MG2 Premium */}
+      <div className="flex-1 hidden md:flex flex-col items-center justify-center relative w-full h-screen overflow-hidden bg-[#CC0000] shadow-[inset_0_0_100px_rgba(0,0,0,0.3)]">
 
-        <img
-          src={v4Logo}
-          alt="V4 Company"
-          className="w-full max-w-[450px] max-h-[450px] object-contain drop-shadow-[0_10px_30px_rgba(204,0,0,0.15)] mix-blend-multiply"
-          style={{
-            // Converte a logo branca/preta para o tom exato vermelho V4 (#CC0000)
-            filter: 'brightness(0) saturate(100%) invert(13%) sepia(93%) saturate(6144%) hue-rotate(356deg) brightness(89%) contrast(117%)'
-          }}
-        />
+        {/* Background Patterns */}
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-32 h-32 mb-8 bg-white flex items-center justify-center rounded-3xl shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
+            <span className="text-[#CC0000] text-5xl font-black italic tracking-tighter">MG2</span>
+          </div>
+
+          <div className="text-center space-y-2">
+            <h1 className="text-white text-4xl font-black tracking-tighter uppercase">Regional</h1>
+            <p className="text-white/60 font-medium tracking-[0.3em] uppercase text-xs">Painel de Performance</p>
+          </div>
+
+          <div className="mt-12 flex gap-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-black/10 rounded-full blur-3xl"></div>
 
       </div>
     </div>

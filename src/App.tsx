@@ -66,9 +66,15 @@ function AppContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <img src={v4Logo} alt="V4" className="h-10 animate-pulse [filter:brightness(0)_invert(19%)_sepia(97%)_saturate(7404%)_hue-rotate(357deg)_brightness(101%)_contrast(117%)]" />
-          <p className="text-sm text-muted-foreground">Carregando...</p>
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-24 h-24 border-2 border-primary/20 rounded-full animate-loader-spin border-t-primary" />
+            <h1 className="text-4xl font-semibold tracking-tighter text-primary animate-pulse-logo">MG2</h1>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-sm font-bold tracking-[0.2em] uppercase text-muted-foreground animate-fadeIn">Regional</p>
+            <p className="text-[10px] font-medium text-muted-foreground/50 tabular">Carregando painel de elite...</p>
+          </div>
         </div>
       </div>
     );
@@ -91,10 +97,10 @@ function AppContent() {
     { id: "ranking", label: "Ranking", icon: <Trophy className="w-4 h-4" /> },
     { id: "pessoas", label: "Pessoas", icon: <Users className="w-4 h-4" /> },
     { id: "canais", label: "Canais", icon: <Layers className="w-4 h-4" /> },
-    { id: "formulario", label: "Lançar Dia", icon: <FileText className="w-4 h-4" />, hideForAdmin: true },
-    { id: "conferencia", label: "Conferência", icon: <ClipboardCheck className="w-4 h-4" /> },
+    { id: "formulario", label: "Lançamento", icon: <FileText className="w-4 h-4" />, hideForAdmin: true },
+    { id: "conferencia", label: "Audit", icon: <ClipboardCheck className="w-4 h-4" /> },
     { id: "analise-propostas", label: "Propostas", icon: <Thermometer className="w-4 h-4" /> },
-    { id: "analise-pv", label: "Pré-Venda", icon: <Zap className="w-4 h-4" /> },
+    { id: "analise-pv", label: "PV", icon: <Zap className="w-4 h-4" /> },
     { id: "gestao", label: "Gestão", icon: <BarChart3 className="w-4 h-4" />, hideForAdmin: true },
     { id: "unidades", label: "Unidades", icon: <LayoutDashboard className="w-4 h-4" />, adminOnly: true },
     { id: "metas", label: "Metas", icon: <Target className="w-4 h-4" /> },
@@ -110,96 +116,29 @@ function AppContent() {
     return true;
   });
 
-  // Home page is full-bleed
-  if (activeTab === "home") {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="fixed top-0 right-0 z-50 p-4 flex items-center justify-end pointer-events-none">
-          {/* Menu Desktop */}
-          <div className="hidden md:flex items-center gap-1 bg-card/80 backdrop-blur-xl border border-border/60 rounded-xl px-2 py-1.5 shadow-lg pointer-events-auto">
-            <ThemeToggle />
-            <div className="w-px h-5 bg-border/60 mx-1" />
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-2xl">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+          <div className="flex items-center gap-4">
+            <button onClick={() => handleNavigate("home")} className="flex items-center gap-3 group transition-all">
+              <img
+                src={v4Logo}
+                alt="V4 Company"
+                className="h-8 group-hover:scale-105 transition-transform [filter:brightness(0)_invert(13%)_sepia(93%)_saturate(6144%)_hue-rotate(356deg)_brightness(89%)_contrast(117%)]"
+              />
+            </button>
+          </div>
 
+          <div className="hidden lg:flex items-center gap-1">
             <nav className="flex items-center gap-1">
-              {visibleTabs.filter(t => t.id !== "home").map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleNavigate(tab.id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                >
-                  {tab.icon}
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-
-            <div className="w-px h-5 bg-border/60 mx-1" />
-            <button onClick={signOut} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Sair">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Menu Mobile */}
-          <div className="md:hidden flex items-center gap-1 bg-card/80 backdrop-blur-xl border border-border/60 rounded-xl px-2 py-1.5 shadow-lg pointer-events-auto">
-            <ThemeToggle />
-            <div className="w-px h-5 bg-border/60 mx-1" />
-            <button
-              className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </header>
-
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 z-40 bg-background/95 backdrop-blur-xl md:hidden">
-            <div className="pt-20 px-4 space-y-1">
               {visibleTabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => { handleNavigate(tab.id); setMobileMenuOpen(false); }}
-                  className="flex items-center justify-between w-full px-4 py-3.5 rounded-xl text-sm font-medium transition-colors text-muted-foreground hover:bg-secondary hover:text-foreground"
-                >
-                  <div className="flex items-center gap-3">{tab.icon}{tab.label}</div>
-                  <ChevronRight className="w-4 h-4 opacity-40" />
-                </button>
-              ))}
-              <button onClick={signOut} className="flex items-center gap-3 w-full px-4 py-3.5 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
-                <LogOut className="w-4 h-4" /> Sair
-              </button>
-            </div>
-          </div>
-        )}
-
-        <HomePage onNavigate={handleNavigate} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-2xl">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <button onClick={() => handleNavigate("home")} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <img src={v4Logo} alt="V4" className="h-7 [filter:brightness(0)_invert(19%)_sepia(97%)_saturate(7404%)_hue-rotate(357deg)_brightness(101%)_contrast(117%)]" />
-            </button>
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="font-semibold text-sm text-foreground">MG2</span>
-              <span className="text-[11px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-md font-medium">Mar/2026</span>
-            </div>
-          </div>
-
-          <div className="hidden md:flex items-center gap-1">
-            <nav className="flex items-center gap-1">
-              {visibleTabs.filter(t => t.id !== "home").map((tab) => (
-                <button
-                  key={tab.id}
                   onClick={() => handleNavigate(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 ${activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all duration-300 relative group/nav ${activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.4)] ring-2 ring-white/20 scale-105"
+                    : "text-muted-foreground hover:text-primary hover:bg-primary/5"
                     }`}
                 >
                   {tab.icon}
@@ -207,15 +146,15 @@ function AppContent() {
                 </button>
               ))}
             </nav>
-            <div className="w-px h-5 bg-border mx-1" />
+            <div className="w-px h-5 bg-border mx-2" />
             <ThemeToggle />
-            <button onClick={signOut} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Sair">
+            <button onClick={signOut} className="p-2.5 rounded-xl hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-1" title="Sair">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
 
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
+            className="lg:hidden p-2 rounded-xl hover:bg-secondary transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -223,40 +162,44 @@ function AppContent() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-background/98 backdrop-blur-2xl p-2">
-            {visibleTabs.map((tab) => (
+          <div className="lg:hidden fixed inset-0 top-16 z-40 bg-background/98 backdrop-blur-2xl">
+            <div className="p-4 space-y-2">
+              {visibleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => { handleNavigate(tab.id); setMobileMenuOpen(false); }}
+                  className={`flex items-center justify-between w-full px-6 py-4 rounded-2xl text-sm font-semibold transition-all duration-300 ${activeTab === tab.id
+                    ? "bg-primary text-primary-foreground shadow-[0_0_25px_rgba(var(--primary),0.3)] scale-[1.02] translate-x-1"
+                    : "text-muted-foreground hover:bg-primary/5 hover:text-primary"
+                    }`}
+                >
+                  <div className="flex items-center gap-4">{tab.icon}{tab.label}</div>
+                  <ChevronRight className="w-4 h-4 opacity-40" />
+                </button>
+              ))}
+              <div className="h-px bg-border my-4" />
               <button
-                key={tab.id}
-                onClick={() => { handleNavigate(tab.id); setMobileMenuOpen(false); }}
-                className={`flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-medium transition-colors ${activeTab === tab.id
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-secondary"
-                  }`}
+                onClick={signOut}
+                className="flex items-center gap-4 w-full px-5 py-4 rounded-2xl text-sm font-bold text-destructive hover:bg-destructive/10 transition-colors"
               >
-                <div className="flex items-center gap-3">{tab.icon}{tab.label}</div>
-                <ChevronRight className="w-4 h-4 opacity-40" />
+                <LogOut className="w-4 h-4" /> Sair da Conta
               </button>
-            ))}
-            <button onClick={signOut} className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
-              <LogOut className="w-4 h-4" /> Sair
-            </button>
+            </div>
           </div>
         )}
       </header>
 
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="animate-fadeIn">
+      <main className={`flex-1 ${activeTab === "home" ? "" : "max-w-[1440px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-8"}`}>
+        <div key={activeTab} className="animate-fadeIn">
+          {activeTab === "home" && <HomePage onNavigate={handleNavigate} />}
           {activeTab === "dashboard" && <Dashboard />}
           {activeTab === "ranking" && (
             <div className="space-y-8">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Rankings</h1>
-                <p className="text-sm text-muted-foreground mt-1">Performance em tempo real por membro da equipe</p>
+                <h1 className="text-3xl font-semibold tracking-tighter">Ranking de Performance</h1>
+                <p className="text-sm text-muted-foreground mt-1">Liderança em faturamento e conexões em tempo real</p>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <RankingClosers />
-                <RankingPreVendas />
-              </div>
+              <RankingClosers />
             </div>
           )}
           {activeTab === "pessoas" && <PersonView />}
@@ -264,12 +207,12 @@ function AppContent() {
           {activeTab === "formulario" && (
             <div className="space-y-8">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Lançamento Diário</h1>
-                <p className="text-sm text-muted-foreground mt-1">Preencha até às 20h com os dados do dia</p>
+                <h1 className="text-3xl font-semibold tracking-tighter">Lançamento Diário</h1>
+                <p className="text-sm text-muted-foreground mt-1">Preencha seus números corporativos até as 20h</p>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <DailyFormCloser />
-                <DailyFormPreVendas />
+              <div className={`grid grid-cols-1 ${(isAdmin || isGerente) ? "lg:grid-cols-2" : "max-w-3xl mx-auto"} gap-8`}>
+                {(isAdmin || isGerente || roles.includes("closer")) && <DailyFormCloser />}
+                {(isAdmin || isGerente || roles.includes("sdr")) && <DailyFormPreVendas />}
               </div>
             </div>
           )}

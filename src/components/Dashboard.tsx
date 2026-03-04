@@ -148,43 +148,45 @@ export default function Dashboard() {
   const totalUnitReceita = unitRanking.reduce((a, u) => a + u.receita, 0);
 
   return (
-    <div className="space-y-8">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Meta Março <span className="text-primary">2026</span>
+    <div className="space-y-10 pb-16">
+      {/* ── Header Area (Refined) ── */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 pt-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-primary">
+            <Target className="w-4 h-4" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] leading-none">Gestão de Performance</p>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-[-0.04em] text-foreground">
+            Meta <span className="text-primary italic">Março 2026.</span>
           </h1>
-          <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Dia {diaAtual}/{goals.diasUteisTotal}</span>
+          <div className="flex items-center gap-4 pt-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border/40">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[11px] font-semibold tabular">Dia {diaAtual} de {goals.diasUteisTotal}</span>
             </div>
             {hasData && (
-              <>
-                <span className="w-px h-3.5 bg-border" />
-                <div className="flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5" />
-                  <span>Pace</span>
-                  <span className={`font-bold tabular ${semaforoGeral === "verde" ? "semaforo-verde" : semaforoGeral === "amarelo" ? "semaforo-amarelo" : semaforoGeral === "laranja" ? "semaforo-laranja" : "semaforo-vermelho"}`}>
-                    {formatPercent(pctIdealReceita)}
-                  </span>
-                </div>
-              </>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border/40">
+                <Activity className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[11px] font-semibold text-muted-foreground italic">Pace:</span>
+                <span className={`text-[11px] font-semibold tabular ${semaforoGeral === "verde" ? "semaforo-verde" : "semaforo-vermelho"}`}>
+                  {formatPercent(pctIdealReceita)}
+                </span>
+              </div>
             )}
           </div>
         </div>
+
         <div className="flex items-center gap-3">
           {isAdmin && unitsList.length > 0 && (
             <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger className="w-[200px] h-9 text-sm">
+              <SelectTrigger className="w-[240px] h-11 rounded-2xl glass-panel border-white/10 shadow-lg text-sm font-semibold">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Filter className="w-4 h-4 text-primary" />
                   <SelectValue placeholder="Todas unidades" />
                 </div>
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Consolidado Regional</SelectItem>
+              <SelectContent className="glass-panel border-white/10 rounded-2xl">
+                <SelectItem value="all" className="font-semibold">Consolidado Regional</SelectItem>
                 {unitsList.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                 ))}
@@ -210,57 +212,84 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── NÍVEL 1: Indicadores Estratégicos ── */}
-      <section>
-        <p className="section-title mb-4">Indicadores Estratégicos</p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Faturamento Total" value={totais.faturamento} meta={goals.metaReceitaTotal} format="currency" size="large" />
-          <KpiCard label="Receita Líquida" value={totais.receitaLiquida} meta={goals.metaReceitaLiquida} format="currency" size="large" />
-          <div className="kpi-card p-6 relative overflow-hidden">
-            {hasData && (
-              <div className={`absolute top-3 bottom-3 left-0 w-[3px] rounded-r-full ${projecaoFinal >= goals.metaReceitaTotal ? "bg-semaforo-verde" : "bg-semaforo-vermelho"}`} />
-            )}
-            <p className="kpi-label mb-3">Projeção Final</p>
-            <p className="text-[28px] font-bold tracking-tight leading-none tabular">{hasData ? formatCurrency(projecaoFinal) : "—"}</p>
-            {hasData && (
-              <div className="mt-4 flex items-center gap-1.5">
-                <TrendingUp className={`w-3 h-3 ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`} />
-                <span className={`text-[11px] font-medium tabular ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`}>
-                  Gap: {formatCurrency(projecaoFinal - goals.metaReceitaTotal)}
-                </span>
-              </div>
-            )}
+      {/* ── METRICS GRID ── */}
+      <div className="space-y-12">
+        {/* Nível 1: Strategic Indicators */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Indicadores Estratégicos</p>
           </div>
-          <div className="kpi-card p-6 relative overflow-hidden">
-            {hasData && (
-              <div className={`absolute top-3 bottom-3 left-0 w-[3px] rounded-r-full ${gapReceita >= 0 ? "bg-semaforo-verde" : "bg-semaforo-vermelho"}`} />
-            )}
-            <p className="kpi-label mb-3">Gap vs Ideal</p>
-            <p className={`text-[28px] font-bold tracking-tight leading-none tabular ${hasData ? (gapReceita >= 0 ? "semaforo-verde" : "semaforo-vermelho") : "text-muted-foreground"}`}>
-              {hasData ? formatCurrency(gapReceita) : "—"}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-4 tabular">
-              Ideal acumulado: {formatCurrency(idealReceita)}
-            </p>
-          </div>
-        </div>
-      </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard label="Faturamento Total" value={totais.faturamento} meta={goals.metaReceitaTotal} format="currency" size="large" />
+            <KpiCard label="Receita Líquida" value={totais.receitaLiquida} meta={goals.metaReceitaLiquida} format="currency" size="large" />
 
-      {/* ── NÍVEL 1b: Receita Breakdown ── */}
-      <section>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <KpiCard label="Recorrente" value={totais.recorrente} meta={goals.metaReceitaRecorrente} format="currency" />
-          <KpiCard label="One-Time" value={totais.onetime} meta={goals.metaReceitaOnetime} format="currency" />
-          <KpiCard label="Churn M0" value={totais.churnM0} meta={goals.metaChurnM0Max} format="currency" invertSemaforo />
-          <KpiCard label="Contratos" value={totais.contratos} meta={goals.metaContratos} />
-          <div className="kpi-card p-6">
-            <p className="kpi-label mb-3">% Meta</p>
-            <p className={`text-[28px] font-bold tracking-tight leading-none tabular ${hasData ? (pctMetaReceita >= 1 ? "semaforo-verde" : pctMetaReceita >= 0.75 ? "semaforo-amarelo" : "semaforo-vermelho") : "text-muted-foreground"}`}>
-              {hasData ? formatPercent(pctMetaReceita) : "—"}
-            </p>
+            {/* Projeção Final Glass Card */}
+            <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden animation-shine-container">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 shadow-overlay">
+                <div className="shine-overlay" />
+              </div>
+              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${projecaoFinal >= goals.metaReceitaTotal ? "bg-semaforo-verde" : "bg-semaforo-vermelho"} opacity-80`} />
+
+              <p className="kpi-label mb-4 opacity-60">Projeção Final</p>
+              <p className="text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none">{hasData ? formatCurrency(projecaoFinal) : "—"}</p>
+
+              {hasData && (
+                <div className="mt-6 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className={`w-3.5 h-3.5 ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`} />
+                    <span className={`text-[11px] font-semibold tabular ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`}>
+                      Gap: {formatCurrency(projecaoFinal - goals.metaReceitaTotal)}
+                    </span>
+                  </div>
+                  <div className="h-1 w-full bg-secondary/30 rounded-full overflow-hidden">
+                    <div className={`h-full bg-primary rounded-full transition-all duration-1000 w-[65%] progress-glow`} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Gap vs Ideal Glass Card */}
+            <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
+              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${hasData ? (gapReceita >= 0 ? "bg-semaforo-verde" : "bg-semaforo-vermelho") : "bg-border/40"} opacity-80`} />
+              <p className="kpi-label mb-4 opacity-60">Gap vs Ideal</p>
+              <p className={`text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none ${hasData ? (gapReceita >= 0 ? "semaforo-verde" : "semaforo-vermelho") : "text-muted-foreground"}`}>
+                {hasData ? formatCurrency(gapReceita) : "—"}
+              </p>
+              <div className="mt-8 pt-4 border-t border-border/40">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground opacity-50">Acumulado Ideal</p>
+                <p className="text-xs font-semibold text-foreground/80 mt-1 tabular">{formatCurrency(idealReceita)}</p>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Nível 2: Revenue Breakdown */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary/40" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Composição de Receita</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <KpiCard label="Recorrente" value={totais.recorrente} meta={goals.metaReceitaRecorrente} format="currency" />
+            <KpiCard label="One-Time" value={totais.onetime} meta={goals.metaReceitaOnetime} format="currency" />
+            <KpiCard label="Churn M0" value={totais.churnM0} meta={goals.metaChurnM0Max} format="currency" invertSemaforo />
+            <KpiCard label="Contratos" value={totais.contratos} meta={goals.metaContratos} />
+
+            <div className="group relative glass-panel rounded-3xl p-6 border-white/10 shadow-lg hover:shadow-xl transition-all duration-500 overflow-hidden">
+              <p className="kpi-label mb-4 opacity-60">% Meta Geral</p>
+              <div className="flex items-center gap-4">
+                <p className={`text-3xl font-semibold tabular tracking-tighter ${hasData ? (pctMetaReceita >= 1 ? "semaforo-verde" : "semaforo-vermelho") : "text-muted-foreground"}`}>
+                  {hasData ? formatPercent(pctMetaReceita) : "—"}
+                </p>
+              </div>
+              <div className="mt-6 h-1.5 w-full bg-secondary/30 rounded-full overflow-hidden">
+                <div className={`h-full bg-primary rounded-full transition-all duration-1000 progress-glow`} style={{ width: `${Math.min(pctMetaReceita * 100, 100)}%` }} />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
 
       {/* ── Top Unidades (Admin only) ── */}
       {isAdmin && unitRanking.length > 0 && (
@@ -289,12 +318,11 @@ export default function Dashboard() {
                     return (
                       <tr key={unit.name} className="table-row-v4">
                         <td className="text-center p-3">
-                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-bold ${
-                            idx === 0 ? "bg-primary/15 text-primary" :
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-semibold ${idx === 0 ? "bg-primary/15 text-primary" :
                             idx === 1 ? "bg-primary/10 text-primary/80" :
-                            idx === 2 ? "bg-primary/5 text-primary/60" :
-                            "bg-secondary text-muted-foreground"
-                          }`}>
+                              idx === 2 ? "bg-primary/5 text-primary/60" :
+                                "bg-secondary text-muted-foreground"
+                            }`}>
                             {idx + 1}
                           </span>
                         </td>
@@ -311,7 +339,7 @@ export default function Dashboard() {
                         <td className="p-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <div className="w-12 progress-track">
-                              <div className="progress-fill bg-primary" style={{ width: `${Math.min(pctRegional * 100, 100)}%` }} />
+                              <div className="progress-fill bg-primary progress-glow" style={{ width: `${Math.min(pctRegional * 100, 100)}%` }} />
                             </div>
                             <span className="tabular font-medium text-[11px]">{formatPercent(pctRegional)}</span>
                           </div>
@@ -326,14 +354,33 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* ── NÍVEL 3: Charts & Rankings ── */}
-      <section>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <RevenueChart />
-            <FunnelChart />
+      {/* ── NÍVEL 3: Charts & Rankings (Linear Layout) ── */}
+      <section className="space-y-12">
+        {/* Gráfico de Faturamento - Foco Total */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Evolução de Faturamento</p>
           </div>
-          <div className="space-y-6">
+          <RevenueChart />
+        </div>
+
+        {/* Funil de Vendas - Foco Total */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Funil de Vendas Acumulado</p>
+          </div>
+          <FunnelChart />
+        </div>
+
+        {/* Rankings - Grid de Base */}
+        <div className="space-y-6 pt-6 border-t border-border/40">
+          <div className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Performance Regional (Rankings)</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <RankingClosers />
             <RankingPreVendas />
           </div>
