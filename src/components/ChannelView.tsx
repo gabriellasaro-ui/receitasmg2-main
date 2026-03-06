@@ -147,7 +147,7 @@ export function ChannelView() {
       const startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
       const endDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-31`;
 
-      let salesQuery = supabase
+      let salesQuery: any = supabase
         .from("closer_sales_detail")
         .select(`
           canal_venda, 
@@ -161,13 +161,13 @@ export function ChannelView() {
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
-      let bookedQuery = supabase
+      let bookedQuery: any = supabase
         .from("pv_booked_calls_detail")
         .select("canal, unit_id")
         .gte("data_referencia", startDate)
         .lte("data_referencia", endDate);
 
-      let pvContractsQuery = supabase
+      let pvContractsQuery: any = supabase
         .from("pv_contracts_detail")
         .select("canal, valor_total, lead_nome, unit_id")
         .gte("data_referencia", startDate)
@@ -175,7 +175,7 @@ export function ChannelView() {
 
       if (!isAdmin && profile?.unit_id) {
         // Filtra vendas cujas submissões pertencem à unidade do usuário
-        salesQuery = salesQuery.eq("closer_submissions.unit_id", profile.unit_id);
+        salesQuery = salesQuery.eq("closer_submissions.unit_id", profile.unit_id) as any;
         bookedQuery = bookedQuery.eq("unit_id", profile.unit_id);
         pvContractsQuery = pvContractsQuery.eq("unit_id", profile.unit_id);
       }
@@ -458,16 +458,18 @@ export function ChannelView() {
         <div className="flex items-center gap-2 flex-wrap">
           {isAdmin && unitsList.length > 0 && (
             <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger className="w-[200px] h-9 text-sm">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                  <SelectValue placeholder="Todas unidades" />
-                </div>
+              <SelectTrigger className="filter-pill w-[220px] border-0 shadow-lg shadow-black/5 focus:ring-0 focus:ring-offset-0 h-11 rounded-full px-5 gap-3">
+                <Filter className="filter-icon-red shrink-0 w-4 h-4" />
+                <SelectValue placeholder="Todas Unidades" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas Unidades</SelectItem>
+              <SelectContent className="rounded-2xl border border-border/60 shadow-2xl shadow-black/10 backdrop-blur-sm bg-white/95 dark:bg-card/95 mt-1">
+                <SelectItem value="all" className="rounded-xl font-semibold text-sm cursor-pointer">
+                  Todas Unidades
+                </SelectItem>
                 {unitsList.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  <SelectItem key={u.id} value={u.id} className="rounded-xl text-sm cursor-pointer">
+                    {u.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -475,16 +477,26 @@ export function ChannelView() {
 
           {(isAdmin || isGerente || isSdr) ? (
             <>
-              {isAdmin && (
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowAddForm(true)}>
-                  <Plus className="w-3.5 h-3.5" />
+              {(isAdmin || isGerente) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="filter-pill h-11 rounded-full px-5 gap-2 border-0 shadow-lg shadow-black/5 text-sm font-semibold"
+                  onClick={() => setShowAddForm(true)}
+                >
+                  <Plus className="w-4 h-4 text-primary" />
                   Novo Canal
                 </Button>
               )}
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="gap-1.5" onClick={handleOpenEditor}>
-                    <Settings2 className="w-3.5 h-3.5" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="filter-pill h-11 rounded-full px-5 gap-2 border-0 shadow-lg shadow-black/5 text-sm font-semibold"
+                    onClick={handleOpenEditor}
+                  >
+                    <Settings2 className="w-4 h-4 text-primary" />
                     Definir Metas
                   </Button>
                 </DialogTrigger>

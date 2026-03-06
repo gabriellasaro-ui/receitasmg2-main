@@ -1,5 +1,6 @@
-import { CheckCircle2, AlertTriangle, AlertOctagon, ShieldAlert } from "lucide-react";
+import { CheckCircle2, AlertTriangle, AlertCircle, ShieldAlert } from "lucide-react";
 import { SemaforoStatus, getSemaforoLabel, getSemaforoBadgeClass, formatPercent } from "@/data/seedData";
+import { cn } from "@/lib/utils";
 
 interface SemaforoBadgeProps {
   status: SemaforoStatus;
@@ -8,19 +9,19 @@ interface SemaforoBadgeProps {
 }
 
 const icons: Record<SemaforoStatus, React.ReactNode> = {
-  verde: <CheckCircle2 className="w-3 h-3" />,
-  amarelo: <AlertTriangle className="w-3 h-3" />,
-  laranja: <ShieldAlert className="w-3 h-3" />,
-  vermelho: <AlertOctagon className="w-3 h-3" />,
+  verde: <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />,
+  amarelo: <AlertTriangle className="w-3.5 h-3.5 shrink-0" />,
+  laranja: <ShieldAlert className="w-3.5 h-3.5 shrink-0" />,
+  vermelho: <AlertCircle className="w-3.5 h-3.5 shrink-0" />,
 };
 
 export function SemaforoBadge({ status, pctIdeal, compact }: SemaforoBadgeProps) {
   return (
-    <span className={getSemaforoBadgeClass(status)}>
+    <span className={cn(getSemaforoBadgeClass(status), "inline-flex items-center gap-1.5 whitespace-nowrap")}>
       {icons[status]}
-      {!compact && <span>{getSemaforoLabel(status)}</span>}
+      {!compact && <span className="leading-none">{getSemaforoLabel(status)}</span>}
       {pctIdeal !== undefined && (
-        <span className="opacity-80">· {formatPercent(pctIdeal)}</span>
+        <span className="opacity-80 leading-none">· {formatPercent(pctIdeal)}</span>
       )}
     </span>
   );

@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Save, Plus, Trash2, Building2, Calendar, ChevronLeft, ChevronRight, Copy, Eye, Pencil, X } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Settings, Save, Plus, Trash2, Building2, Calendar, ChevronLeft, ChevronRight, Copy, Eye, Pencil, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { formatCurrency, formatPercent } from "@/data/seedData";
 import { useDashboardStore } from "@/data/store";
@@ -33,6 +35,7 @@ interface GoalRow {
   ticket_medio: number;
   investimento_total: number;
   cpl_medio: number;
+  meta_gmv_tier?: string;
 }
 
 interface Unit {
@@ -49,7 +52,7 @@ const regionalFields: { key: keyof GoalRow; label: string; type: "number" | "cur
   { key: "meta_receita_onetime", label: "Receita One-Time", type: "currency" },
   { key: "meta_churn_m0_max", label: "Churn M0 Máx", type: "currency" },
   { key: "meta_receita_liquida", label: "Receita Líquida", type: "currency" },
-  { key: "meta_contratos", label: "Contratos", type: "number" },
+  { key: "meta_contratos", label: "Logo", type: "number" },
 ];
 
 const unitFields: { key: keyof GoalRow; label: string; type: "number" | "currency" }[] = [
@@ -78,6 +81,10 @@ export function GoalsSettings() {
   const gerenteUnitId = profile?.unit_id || null;
   const { getTotais, loadFromDB } = useDashboardStore();
   const totais = getTotais();
+
+  // LOGO: contract count for current month (admin only)
+  const [logoContratos, setLogoContratos] = useState(0);
+  const [logoValor, setLogoValor] = useState(0);
 
   const now = new Date();
   const [mesRef, setMesRef] = useState(now.getMonth() + 1);
@@ -122,6 +129,28 @@ export function GoalsSettings() {
 
   useEffect(() => { fetchData(); }, [mesRef, anoRef]);
 
+  // Fetch LOGO (contract count) for admin
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchLogo = async () => {
+      const startDate = `${anoRef}-${String(mesRef).padStart(2, "0")}-01`;
+      const endDate = `${anoRef}-${String(mesRef).padStart(2, "0")}-31`;
+
+      const [closerRes, pvRes] = await Promise.all([
+        supabase.from("closer_sales_detail").select("valor_total").gte("data_referencia", startDate).lte("data_referencia", endDate),
+        supabase.from("pv_contracts_detail").select("valor_total").gte("data_referencia", startDate).lte("data_referencia", endDate),
+      ]);
+
+      const closerContracts = closerRes.data || [];
+      const pvContracts = pvRes.data || [];
+      const totalCount = closerContracts.length + pvContracts.length;
+      const totalValue = [...closerContracts, ...pvContracts].reduce((sum, c) => sum + Number(c.valor_total || 0), 0);
+      setLogoContratos(totalCount);
+      setLogoValor(totalValue);
+    };
+    fetchLogo();
+  }, [mesRef, anoRef, isAdmin]);
+
   const navigateMonth = (dir: -1 | 1) => {
     let m = mesRef + dir;
     let a = anoRef;
@@ -133,7 +162,7 @@ export function GoalsSettings() {
 
   const handleChange = (goalId: string, key: keyof GoalRow, value: string) => {
     setGoals((prev) =>
-      prev.map((g) => g.id === goalId ? { ...g, [key]: value === "" ? 0 : Number(value) } : g)
+      prev.map((g) => g.id === goalId ? { ...g, [key]: key === "meta_gmv_tier" ? value : (value === "" ? 0 : Number(value)) } : g)
     );
   };
 
@@ -263,6 +292,7 @@ export function GoalsSettings() {
   // Units with goals this month
   const unitsWithGoals = units.filter((u) => goals.some((g) => g.unit_id === u.id));
   const hasRegional = goals.some((g) => g.unit_id === null);
+  const regionalGoalAdmin = goals.find((g) => g.unit_id === null) || null;
 
   // Gerente contribution calculation
   const gerenteContribution = (regionalGoal: GoalRow, unitGoal: GoalRow) => {
@@ -322,6 +352,39 @@ export function GoalsSettings() {
         </div>
       )}
 
+      {/* LOGO - Contratos entrando (Admin only) */}
+      {isAdmin && (
+        <Card className="border-accent/20 bg-accent/5">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="w-4 h-4 text-accent" />
+              <p className="text-[13px] font-semibold">LOGO — Contratos Entrando</p>
+              <span className="text-[10px] text-muted-foreground ml-auto">{MESES[mesRef - 1]}/{anoRef}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="kpi-label">Contratos</p>
+                <p className="kpi-value text-accent">{logoContratos}</p>
+                {regionalGoalAdmin && (
+                  <p className="text-[10px] text-muted-foreground mt-1 tabular">
+                    Meta: {regionalGoalAdmin.meta_contratos} · {regionalGoalAdmin.meta_contratos > 0 ? formatPercent(logoContratos / regionalGoalAdmin.meta_contratos) : "—"}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="kpi-label">Valor Total</p>
+                <p className="kpi-value text-accent">{formatCurrency(logoValor)}</p>
+                {regionalGoalAdmin && (
+                  <p className="text-[10px] text-muted-foreground mt-1 tabular">
+                    Meta: {formatCurrency(regionalGoalAdmin.meta_receita_total)} · {regionalGoalAdmin.meta_receita_total > 0 ? formatPercent(logoValor / regionalGoalAdmin.meta_receita_total) : "—"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Gerente: create unit goal if doesn't exist */}
       {isGerente && !isAdmin && goals.length === 0 && gerenteUnitId && (
         <div className="flex flex-wrap items-center gap-2">
@@ -360,6 +423,15 @@ export function GoalsSettings() {
                   </div>
                 );
               })}
+
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">Meta GMV Tier</p>
+                <div className="h-8 flex items-center">
+                  <Badge variant="outline" className={`capitalize font-bold ${(regionalGoal as any).meta_gmv_tier === "enterprise" ? "text-red-500 border-red-500" : (regionalGoal as any).meta_gmv_tier === "large" ? "text-orange-500 border-orange-500" : (regionalGoal as any).meta_gmv_tier === "medium" ? "text-yellow-500 border-yellow-500" : (regionalGoal as any).meta_gmv_tier === "tiny" ? "text-stone-500 border-stone-500" : "text-blue-500 border-blue-500"}`}>
+                    {(regionalGoal as any).meta_gmv_tier || "small"}
+                  </Badge>
+                </div>
+              </div>
             </div>
 
             {/* Contribution breakdown */}
@@ -397,8 +469,8 @@ export function GoalsSettings() {
             <button
               onClick={() => setActiveUnitId("regional")}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeUnitId === "regional"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground border-border hover:border-primary/30"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/30"
                 }`}
             >
               Regional
@@ -409,8 +481,8 @@ export function GoalsSettings() {
               key={u.id}
               onClick={() => setActiveUnitId(u.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${activeUnitId === u.id
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground border-border hover:border-primary/30"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/30"
                 }`}
             >
               {u.name}
@@ -494,6 +566,23 @@ export function GoalsSettings() {
                     />
                   </div>
                 ))}
+
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Meta GMV Tier</Label>
+                  <Select
+                    value={currentGoal.meta_gmv_tier || "small"}
+                    onValueChange={(val) => handleChange(currentGoal.id, "meta_gmv_tier", val)}
+                  >
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tiny">🟤 Tiny</SelectItem>
+                      <SelectItem value="small">🔵 Small</SelectItem>
+                      <SelectItem value="medium">🟡 Medium</SelectItem>
+                      <SelectItem value="large">🟠 Large</SelectItem>
+                      <SelectItem value="enterprise">🔴 Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -508,6 +597,15 @@ export function GoalsSettings() {
                     </div>
                   );
                 })}
+
+                <div className="space-y-1">
+                  <p className="text-[11px] text-muted-foreground">Meta GMV Tier</p>
+                  <div className="h-8 flex items-center">
+                    <Badge variant="outline" className={`capitalize font-bold ${currentGoal.meta_gmv_tier === "enterprise" ? "text-red-500 border-red-500" : currentGoal.meta_gmv_tier === "large" ? "text-orange-500 border-orange-500" : currentGoal.meta_gmv_tier === "medium" ? "text-yellow-500 border-yellow-500" : currentGoal.meta_gmv_tier === "tiny" ? "text- पत्थर-500 border-stone-500" : "text-blue-500 border-blue-500"}`}>
+                      {currentGoal.meta_gmv_tier || "small"}
+                    </Badge>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

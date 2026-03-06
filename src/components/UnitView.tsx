@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Users, FileText, TrendingUp, Phone, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, Users, FileText, TrendingUp, Phone, Calendar, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/data/seedData";
 
 interface Unit {
@@ -158,26 +158,29 @@ export function UnitView() {
 
         <div className="flex items-center gap-3">
           {/* Month nav */}
-          <div className="flex items-center gap-1 bg-card border border-border rounded-xl px-2 py-1.5">
-            <button onClick={() => navigateMonth(-1)} className="p-1 rounded-lg hover:bg-secondary">
-              <ChevronLeft className="w-4 h-4" />
+          <div className="flex items-center gap-2 bg-card border border-border/40 rounded-full px-3 py-1.5 shadow-sm">
+            <button onClick={() => navigateMonth(-1)} className="p-1 rounded-full hover:bg-secondary transition-colors">
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-xs font-semibold px-2 min-w-[80px] text-center">
-              {MESES[mesRef - 1]}/{anoRef}
+            <span className="text-[11px] font-bold px-2 min-w-[70px] text-center uppercase tracking-wider">
+              {MESES[mesRef - 1]} {anoRef}
             </span>
-            <button onClick={() => navigateMonth(1)} className="p-1 rounded-lg hover:bg-secondary">
-              <ChevronRight className="w-4 h-4" />
+            <button onClick={() => navigateMonth(1)} className="p-1 rounded-full hover:bg-secondary transition-colors">
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Unit selector */}
           <Select value={selectedUnit} onValueChange={setSelectedUnit}>
-            <SelectTrigger className="h-9 min-w-[200px]">
-              <SelectValue placeholder="Selecione a unidade" />
+            <SelectTrigger className="filter-pill w-[240px] border-none shadow-xl">
+              <div className="flex items-center gap-3">
+                <Filter className="filter-icon-red" />
+                <SelectValue placeholder="Selecione a unidade" />
+              </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="glass-panel border-white/10 rounded-2xl">
               {units.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                <SelectItem key={u.id} value={u.id} className="cursor-pointer font-medium">{u.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

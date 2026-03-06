@@ -1,5 +1,6 @@
 import { useDashboardStore } from "@/data/store";
 import { useUnitData } from "@/hooks/useUnitData";
+import { useState } from "react";
 import {
   getDiaUtilAtual,
   formatCurrency,
@@ -11,31 +12,31 @@ import { SemaforoBadge } from "./SemaforoBadge";
 import { Trophy, Crown, Medal } from "lucide-react";
 
 function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
-  if (avatarUrl) {
+  const [error, setError] = useState(false);
+
+  if (avatarUrl && !error) {
     return (
       <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/80 border border-border/40 shrink-0 ${className}`}>
         <img
           src={avatarUrl}
           alt={name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
+          onError={() => setError(true)}
         />
       </div>
     );
   }
 
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = name.split(" ").filter(n => n).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
-    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[11px] shrink-0 ${className}`}>
-      {initials}
+    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 shadow-inner ${className}`}>
+      <span className={className?.includes("w-40") ? "text-4xl" : "text-xl"}>{initials}</span>
     </div>
   );
 }
 
 function PodiumBlock({ rank, name, avatarUrl, mainValue, isFirst }: { rank: number; name: string; avatarUrl?: string; mainValue: string; isFirst?: boolean }) {
-  const heightClass = isFirst ? "h-72 sm:h-96" : rank === 2 ? "h-56 sm:h-72" : "h-44 sm:h-56";
+  const heightClass = isFirst ? "h-64 sm:h-96" : rank === 2 ? "h-48 sm:h-80" : "h-40 sm:h-64";
   const positionLabel = rank === 1 ? "1º" : rank === 2 ? "2º" : "3º";
 
   return (
@@ -44,23 +45,23 @@ function PodiumBlock({ rank, name, avatarUrl, mainValue, isFirst }: { rank: numb
         <MemberAvatar
           name={name}
           avatarUrl={avatarUrl}
-          className={`shrink-0 shadow-[0_20px_50px_rgba(var(--primary),0.3)] ${isFirst ? "w-32 h-32 sm:w-44 sm:h-44 border-[8px] border-amber-400" : "w-24 h-24 sm:w-32 sm:h-32 border-4 border-white/40"}`}
+          className={`shrink-0 shadow-[0_20px_50px_rgba(var(--primary),0.3)] ${isFirst ? "w-28 h-28 sm:w-40 sm:h-40 border-[8px] border-amber-400" : "w-20 h-20 sm:w-32 sm:h-32 border-4 border-white/40"}`}
         />
         {isFirst && (
-          <div className="absolute -top-14 left-1/2 -translate-x-1/2 animate-float">
-            <Crown className="w-16 h-16 text-amber-500 fill-amber-500 drop-shadow-[0_0_20px_rgba(255,191,0,0.6)]" />
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 animate-float">
+            <Crown className="w-14 h-14 sm:w-16 sm:h-16 text-amber-500 fill-amber-500 drop-shadow-[0_0_20px_rgba(255,191,0,0.6)]" />
           </div>
         )}
       </div>
 
-      <div className={`w-32 sm:w-48 lg:w-56 ${heightClass} glass-panel ${rank === 1 ? "rank-gold shadow-[0_0_60px_rgba(255,157,0,0.4)]" : rank === 2 ? "rank-silver shadow-2xl" : "rank-bronze shadow-lg"} rounded-t-[3.5rem] flex flex-col items-center justify-center border-b-0 shadow-2xl relative animation-shine-container animate-fadeIn transition-all duration-700 group-hover:brightness-110 group-hover:-translate-y-3`}>
+      <div className={`w-28 sm:w-40 lg:w-48 ${heightClass} glass-panel ${rank === 1 ? "rank-gold shadow-[0_0_60px_rgba(255,157,0,0.4)]" : rank === 2 ? "rank-silver shadow-2xl" : "rank-bronze shadow-lg"} rounded-t-[3.5rem] flex flex-col items-center justify-center border-b-0 shadow-2xl relative animation-shine-container animate-fadeIn transition-all duration-700 group-hover:brightness-110 group-hover:-translate-y-3`}>
         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000">
           <div className="shine-overlay" />
         </div>
-        <span className={`text-6xl sm:text-[120px] font-semibold ${isFirst ? "text-white/20" : "text-white/10"} absolute top-4 tracking-tighter select-none`}>{rank}</span>
-        <div className="absolute bottom-10 w-full px-4 text-center">
-          <p className={`font-semibold text-white truncate uppercase tracking-tight drop-shadow-lg ${isFirst ? "text-lg sm:text-2xl" : "text-sm sm:text-lg"}`}>{name.split(' ')[0]}</p>
-          <p className={`font-semibold text-white/90 tabular drop-shadow-md ${isFirst ? "text-xl sm:text-4xl mt-2 tracking-tighter" : "text-lg sm:text-3xl mt-1"}`}>{mainValue}</p>
+        <span className={`text-6xl sm:text-[100px] font-semibold ${isFirst ? "text-white/20" : "text-white/10"} absolute top-4 tracking-tighter select-none`}>{rank}</span>
+        <div className="absolute bottom-8 w-full px-2 sm:px-4 text-center">
+          <p className={`font-semibold text-white truncate uppercase tracking-tight drop-shadow-lg ${isFirst ? "text-base sm:text-2xl" : "text-xs sm:text-lg"}`}>{name.split(' ')[0]}</p>
+          <p className={`font-semibold text-white/90 tabular drop-shadow-md ${isFirst ? "text-lg sm:text-3xl mt-2 tracking-tighter" : "text-sm sm:text-2xl mt-1"}`}>{mainValue}</p>
         </div>
       </div>
     </div>
@@ -83,9 +84,9 @@ function RankingSection({ title, subtitle, data, type }: { title: string; subtit
         </div>
       </div>
 
-      <div className="flex flex-col 2xl:flex-row items-center 2xl:items-end justify-center gap-12 2xl:gap-20">
+      <div className="flex flex-col 2xl:flex-row items-center 2xl:items-end justify-center gap-12 2xl:gap-16 w-full max-w-7xl mx-auto">
         {/* Podium Area - Expanded */}
-        <div className="flex justify-center items-end gap-4 sm:gap-10 pt-20 px-4">
+        <div className="flex justify-center items-end gap-2 sm:gap-6 lg:gap-8 pt-32 px-2 sm:px-4 w-full 2xl:w-auto overflow-x-auto pb-8 hide-scrollbar">
           {data.length >= 2 && data[1] && (
             <PodiumBlock rank={2} name={data[1].fullName} avatarUrl={data[1].avatarUrl} mainValue={isCloser ? formatCurrency(data[1].faturamento) : `${data[1].callsRealizadas} CR`} />
           )}

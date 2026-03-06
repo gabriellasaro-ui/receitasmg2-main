@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useDashboardStore } from "@/data/store";
-import { channels } from "@/data/seedData";
 import { useUnitData } from "@/hooks/useUnitData";
+import { useUnitChannels } from "@/hooks/useUnitChannels";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CheckCircle, Send, AlertCircle, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { CheckCircle, Send, AlertCircle, ChevronDown, Plus, Trash2, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 /* ── Shared helpers ── */
 
 function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-2 group/field">
-      <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5 transition-colors group-focus-within/field:text-primary">
+      <label className="text-[12px] font-semibold uppercase tracking-widest text-foreground/70 flex items-center gap-1.5 transition-colors group-focus-within/field:text-primary">
         {label}
         {required && (
           <span className="flex items-center justify-center w-4 h-4 rounded-full bg-primary/10 text-primary text-[10px] font-bold animate-pulse">
@@ -34,11 +39,11 @@ function FormField({ label, required, children }: { label: string; required?: bo
 
 function FormSection({ title, children, cols }: { title: string; children: React.ReactNode; cols?: string }) {
   return (
-    <div className="space-y-4 p-6 rounded-[2rem] bg-secondary/20 border border-white/5 relative overflow-hidden group/section">
-      <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover/section:bg-primary transition-colors duration-500" />
+    <div className="space-y-4 p-6 rounded-[2rem] bg-card/80 border border-border/40 relative overflow-hidden group/section">
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary/30 group-hover/section:bg-primary transition-colors duration-500" />
       <div className="flex items-center gap-3 border-b border-border/50 pb-3 mb-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-primary/40 group-hover/section:bg-primary animate-pulse" />
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-semibold opacity-70 group-hover/section:opacity-100 transition-opacity">{title}</p>
+        <div className="w-1.5 h-1.5 rounded-full bg-primary/60 group-hover/section:bg-primary animate-pulse" />
+        <p className="text-[12px] uppercase tracking-[0.15em] text-foreground/70 font-semibold group-hover/section:text-foreground transition-opacity">{title}</p>
       </div>
       <div className={`grid grid-cols-1 ${cols || "sm:grid-cols-2"} gap-6`}>
         {children}
@@ -50,11 +55,11 @@ function FormSection({ title, children, cols }: { title: string; children: React
 function DetailBlockHeader({ title, index, filled }: { title: string; index: number; filled: boolean }) {
   return (
     <div className="flex items-center gap-3 py-1">
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-semibold transition-all duration-300 ${filled ? "bg-primary shadow-[0_0_15px_rgba(var(--primary),0.3)] text-white" : "bg-secondary text-muted-foreground/40 border border-white/5"}`}>
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[12px] font-semibold transition-all duration-300 ${filled ? "bg-primary shadow-[0_0_15px_rgba(var(--primary),0.3)] text-primary-foreground" : "bg-muted text-muted-foreground border border-border"}`}>
         {index + 1}
       </div>
       <div className="flex flex-col items-start">
-        <span className={`text-[13px] font-semibold uppercase tracking-tight transition-colors ${filled ? "text-foreground" : "text-muted-foreground/60"}`}>{title}</span>
+        <span className={`text-[13px] font-semibold uppercase tracking-tight transition-colors ${filled ? "text-foreground" : "text-muted-foreground"}`}>{title}</span>
         {filled && <span className="text-[9px] font-semibold text-primary uppercase tracking-widest animate-fadeIn">Validado ✓</span>}
       </div>
     </div>
@@ -64,16 +69,16 @@ function DetailBlockHeader({ title, index, filled }: { title: string; index: num
 function CompletionCounter({ label, filled, total }: { label: string; filled: number; total: number }) {
   const isComplete = filled === total && total > 0;
   return (
-    <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all duration-500 ${isComplete ? "bg-primary/10 border-primary/30 shadow-[0_0_20px_rgba(var(--primary),0.1)]" : "bg-secondary/40 border-white/5"}`}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground/60 mb-2">{label}</p>
+    <div className={`flex items-center justify-between px-4 py-3 rounded-2xl border transition-all duration-500 ${isComplete ? "bg-primary/10 border-primary/30 shadow-[0_0_20px_rgba(var(--primary),0.1)]" : "bg-muted/50 border-border"}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-2">{label}</p>
       <div className="flex items-center gap-3">
-        <div className="h-1.5 w-24 bg-black/20 rounded-full overflow-hidden hidden sm:block">
+        <div className="h-1.5 w-24 bg-muted rounded-full overflow-hidden hidden sm:block">
           <div
             className="h-full bg-primary transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(var(--primary),0.8)]"
             style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }}
           />
         </div>
-        <span className={`text-[12px] font-semibold tabular ${isComplete ? "text-primary animate-pulse" : "text-foreground/60"}`}>
+        <span className={`text-[12px] font-semibold tabular ${isComplete ? "text-primary animate-pulse" : "text-foreground"}`}>
           {filled} de {total}
         </span>
       </div>
@@ -83,9 +88,86 @@ function CompletionCounter({ label, filled, total }: { label: string; filled: nu
 
 const tipoLeadOptions = ["broker", "indicação", "recomendação", "outbound", "evento", "parceiro", "recovery"];
 
+/* ── Faixa de Faturamento & GMV tier ── */
+export const FAIXAS_FATURAMENTO: { value: string; label: string; tier: "tiny" | "small" | "medium" | "large" | "enterprise" }[] = [
+  { value: "ate_50k", label: "Até R$ 50 mil", tier: "tiny" },
+  { value: "51k_70k", label: "De R$ 51 mil a R$ 70 mil", tier: "tiny" },
+  { value: "71k_100k", label: "De R$ 71 mil a R$ 100 mil", tier: "tiny" },
+  { value: "101k_200k", label: "De R$ 101 mil a R$ 200 mil", tier: "small" },
+  { value: "201k_400k", label: "De R$ 201 mil a R$ 400 mil", tier: "small" },
+  { value: "401k_1mm", label: "De R$ 401 mil a R$ 1 milhão", tier: "medium" },
+  { value: "1mm_4mm", label: "De R$ 1 a R$ 4 milhões", tier: "medium" },
+  { value: "4mm_16mm", label: "De R$ 4 a R$ 16 milhões", tier: "large" },
+  { value: "16mm_40mm", label: "De R$ 16 a R$ 40 milhões", tier: "large" },
+  { value: "acima_40mm", label: "Mais de R$ 40 milhões", tier: "enterprise" },
+];
+
+const TIER_BADGES: Record<string, { label: string; color: string }> = {
+  tiny: { label: "🟤 Tiny", color: "bg-stone-100   text-stone-700   border-stone-200   dark:bg-stone-800   dark:text-stone-300" },
+  small: { label: "🔵 Small", color: "bg-blue-100    text-blue-700    border-blue-200    dark:bg-blue-900    dark:text-blue-300" },
+  medium: { label: "🟡 Medium", color: "bg-yellow-100  text-yellow-700  border-yellow-200  dark:bg-yellow-900  dark:text-yellow-300" },
+  large: { label: "🟠 Large", color: "bg-orange-100  text-orange-700  border-orange-200  dark:bg-orange-900  dark:text-orange-300" },
+  enterprise: { label: "🔴 Enterprise", color: "bg-red-100     text-red-700     border-red-200     dark:bg-red-900     dark:text-red-300" },
+};
+
+export function calcGmvTier(faixas: string[]): string | null {
+  const filled = faixas.filter(Boolean);
+  if (filled.length === 0) return null;
+  // Contagem de tiers
+  const freq: Record<string, number> = {};
+  for (const f of filled) {
+    const found = FAIXAS_FATURAMENTO.find(x => x.value === f);
+    if (found) freq[found.tier] = (freq[found.tier] || 0) + 1;
+  }
+  // Tier mais frequente
+  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+}
+
 /* ══════════════════════════════════════════════ */
 /* ── CLOSER FORM                              ── */
 /* ══════════════════════════════════════════════ */
+
+function DatePickerField({ date, onSelect }: { date: Date; onSelect: (d: Date) => void }) {
+  return (
+    <FormSection title="Data do Lançamento">
+      <FormField label="Data de referência" required>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                "w-full justify-start text-left font-normal h-10",
+                !date && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {date ? format(date, "dd 'de' MMMM, yyyy", { locale: ptBR }) : "Selecione a data"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) => d && onSelect(d)}
+              disabled={(d) => d > new Date()}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+      </FormField>
+      {date.toDateString() !== new Date().toDateString() && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 sm:col-span-2">
+          <CalendarIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+            Lançamento retroativo para {format(date, "dd/MM/yyyy")}
+          </p>
+        </div>
+      )}
+    </FormSection>
+  );
+}
+
 
 interface ProposalDetail {
   leadNome: string;
@@ -103,6 +185,7 @@ interface SaleDetail {
   valorOnetime: number;
   churnM0: number;
   sdrId?: string; // SDR vinculado
+  faixaFaturamento: string; // Faixa de faturamento do cliente
 }
 
 interface CallDetail {
@@ -112,13 +195,15 @@ interface CallDetail {
 }
 
 const emptyProposal = (): ProposalDetail => ({ leadNome: "", canalProposta: "", temperatura: "morno", valorProposta: 0, observacao: "" });
-const emptySale = (): SaleDetail => ({ leadNome: "", canalVenda: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0, sdrId: "" });
+const emptySale = (): SaleDetail => ({ leadNome: "", canalVenda: "", valorTotal: 0, valorRecorrente: 0, valorOnetime: 0, churnM0: 0, sdrId: "", faixaFaturamento: "" });
 const emptyCall = (): CallDetail => ({ leadNome: "", temperatura: "morno", resultado: "" });
 
 export function DailyFormCloser() {
   const { addCloserSubmission } = useDashboardStore();
-  const { closers: unitClosers, preVendas: unitSDRs, userUnitId } = useUnitData();
+  const { closers: unitClosers, preVendas: unitSDRs, gerentes: unitGerentes, userUnitId } = useUnitData();
+  const { unitChannels } = useUnitChannels();
   const { profile, roles } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showCallDetail, setShowCallDetail] = useState(false);
@@ -212,8 +297,16 @@ export function DailyFormCloser() {
       return;
     }
 
+    if (effectiveFinancials.valorTotal > 0) {
+      const sum = (effectiveFinancials.valorRecorrente || 0) + (effectiveFinancials.valorOnetime || 0);
+      if (Math.abs(sum - effectiveFinancials.valorTotal) > 0.01) {
+        toast.error("A Receita Total deve ser exatamente a soma da Receita Recorrente e One-Time.");
+        return;
+      }
+    }
+
     setSubmitting(true);
-    const dataRef = new Date().toISOString().split("T")[0];
+    const dataRef = format(selectedDate, "yyyy-MM-dd");
 
     try {
       // 1. Insert main submission
@@ -258,18 +351,23 @@ export function DailyFormCloser() {
       // 3. Insert sales details
       if (sales.length > 0) {
         const { error } = await supabase.from("closer_sales_detail").insert(
-          sales.map(s => ({
-            submission_id: sub.id,
-            data_referencia: dataRef,
-            closer_id: form.userId,
-            lead_nome: s.leadNome,
-            canal_venda: s.canalVenda,
-            valor_total: s.valorTotal,
-            valor_recorrente: s.valorRecorrente,
-            valor_onetime: s.valorOnetime,
-            churn_m0: s.churnM0,
-            observacoes: s.sdrId ? `SDR Vinculado: ${s.sdrId}` : null
-          }))
+          sales.map(s => {
+            const sdrPart = s.sdrId ? `SDR Vinculado: ${s.sdrId}` : null;
+            const faixaPart = s.faixaFaturamento ? `Faixa: ${s.faixaFaturamento}` : null;
+            const obsParts = [sdrPart, faixaPart].filter(Boolean);
+            return {
+              submission_id: sub.id,
+              data_referencia: dataRef,
+              closer_id: form.userId,
+              lead_nome: s.leadNome,
+              canal_venda: s.canalVenda,
+              valor_total: s.valorTotal,
+              valor_recorrente: s.valorRecorrente,
+              valor_onetime: s.valorOnetime,
+              churn_m0: s.churnM0,
+              observacoes: obsParts.length > 0 ? obsParts.join(' | ') : null,
+            };
+          })
         );
         if (error) throw error;
       }
@@ -347,7 +445,7 @@ export function DailyFormCloser() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="group relative glass-panel rounded-[2.5rem] p-8 sm:p-10 border-white/10 shadow-2xl transition-all duration-500 overflow-hidden space-y-10">
+    <form onSubmit={handleSubmit} className="group relative bg-card rounded-[2.5rem] p-8 sm:p-10 border border-border shadow-xl transition-all duration-500 overflow-hidden space-y-10">
       {/* Brilliant Shine Effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
         <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
@@ -367,11 +465,13 @@ export function DailyFormCloser() {
           <FormField label="Closer" required>
             <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{unitClosers.map((c) => <SelectItem key={c.userId} value={c.userId}>{c.fullName}</SelectItem>)}</SelectContent>
+              <SelectContent>{[...unitClosers, ...unitSDRs, ...unitGerentes].map((c) => <SelectItem key={c.userId} value={c.userId}>{c.fullName} ({c.role === "sdr" ? "SDR" : c.role === "gerente_unidade" ? "Gerente" : "Closer"})</SelectItem>)}</SelectContent>
             </Select>
           </FormField>
         </FormSection>
       )}
+
+      <DatePickerField date={selectedDate} onSelect={setSelectedDate} />
 
       {/* ── Atividade ── */}
       <FormSection title="Atividade">
@@ -403,7 +503,7 @@ export function DailyFormCloser() {
               <CompletionCounter label="Calls detalhadas" filled={callsFilled} total={form.callsRealizadas} />
               <Accordion type="multiple" className="space-y-2">
                 {calls.map((call, i) => (
-                  <AccordionItem key={i} value={`call-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+                  <AccordionItem key={i} value={`call-${i}`} className="border border-border rounded-[2rem] overflow-hidden bg-muted/30 hover:bg-muted/60 transition-all duration-300 group/item">
                     <AccordionTrigger className="px-6 py-4 hover:no-underline">
                       <DetailBlockHeader title="Call" index={i} filled={!!call.leadNome.trim()} />
                     </AccordionTrigger>
@@ -450,7 +550,7 @@ export function DailyFormCloser() {
           <CompletionCounter label="Propostas detalhadas" filled={proposalsFilled} total={form.propostasRealizadas} />
           <Accordion type="multiple" defaultValue={proposals.map((_, i) => `prop-${i}`)} className="space-y-2">
             {proposals.map((prop, i) => (
-              <AccordionItem key={i} value={`prop-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+              <AccordionItem key={i} value={`prop-${i}`} className="border border-border rounded-[2rem] overflow-hidden bg-muted/30 hover:bg-muted/60 transition-all duration-300 group/item">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Proposta" index={i} filled={!!prop.leadNome.trim()} />
                 </AccordionTrigger>
@@ -475,7 +575,7 @@ export function DailyFormCloser() {
                     <FormField label="Canal da Proposta">
                       <Select value={prop.canalProposta} onValueChange={(v) => updateProposal(i, "canalProposta", v)}>
                         <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>{channels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                        <SelectContent>{unitChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                       </Select>
                     </FormField>
                     <div className="sm:col-span-2">
@@ -492,54 +592,93 @@ export function DailyFormCloser() {
       )}
 
       {/* ── Vendas Detail (required when > 0) ── */}
-      {form.contratosAssinados > 0 && (
-        <div className="space-y-3">
-          <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground font-medium border-b border-border/50 pb-2">Detalhamento de Vendas</p>
-          <CompletionCounter label="Vendas detalhadas" filled={salesFilled} total={form.contratosAssinados} />
-          <Accordion type="multiple" defaultValue={sales.map((_, i) => `sale-${i}`)} className="space-y-2">
-            {sales.map((sale, i) => (
-              <AccordionItem key={i} value={`sale-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <DetailBlockHeader title="Venda" index={i} filled={!!sale.leadNome.trim() && !!sale.canalVenda} />
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <FormField label="Lead/Projeto" required>
-                      <Input value={sale.leadNome} onChange={(e) => updateSale(i, "leadNome", e.target.value)} placeholder="Nome do lead vendido" />
-                    </FormField>
-                    <FormField label="SDR Responsável (Pré-Venda)">
-                      <Select value={sale.sdrId} onValueChange={(v) => updateSale(i, "sdrId", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o SDR" /></SelectTrigger>
-                        <SelectContent>
-                          {unitSDRs.map(s => <SelectItem key={s.userId} value={s.userId}>{s.fullName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </FormField>
-                    <FormField label="Canal da Venda" required>
-                      <Select value={sale.canalVenda} onValueChange={(v) => updateSale(i, "canalVenda", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>{channels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </FormField>
-                    <FormField label="Valor da Venda (R$)">
-                      <Input type="number" min={0} value={sale.valorTotal || ""} onChange={(e) => updateSale(i, "valorTotal", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="Recorrente (R$)">
-                      <Input type="number" min={0} value={sale.valorRecorrente || ""} onChange={(e) => updateSale(i, "valorRecorrente", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="One-Time (R$)">
-                      <Input type="number" min={0} value={sale.valorOnetime || ""} onChange={(e) => updateSale(i, "valorOnetime", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="Churn M0 (R$)">
-                      <Input type="number" min={0} value={sale.churnM0 || ""} onChange={(e) => updateSale(i, "churnM0", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      )}
+      {form.contratosAssinados > 0 && (() => {
+        const gmvTier = calcGmvTier(sales.map(s => s.faixaFaturamento));
+        const tierInfo = gmvTier ? TIER_BADGES[gmvTier] : null;
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-border/50 pb-2">
+              <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground font-medium">Detalhamento de Vendas</p>
+              {tierInfo && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">GMV Tier:</span>
+                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${tierInfo.color}`}>
+                    {tierInfo.label}
+                  </span>
+                </div>
+              )}
+            </div>
+            <CompletionCounter label="Vendas detalhadas" filled={salesFilled} total={form.contratosAssinados} />
+            <Accordion type="multiple" defaultValue={sales.map((_, i) => `sale-${i}`)} className="space-y-2">
+              {sales.map((sale, i) => {
+                const saleTierInfo = sale.faixaFaturamento ? TIER_BADGES[FAIXAS_FATURAMENTO.find(f => f.value === sale.faixaFaturamento)?.tier || ""] : null;
+                return (
+                  <AccordionItem key={i} value={`sale-${i}`} className="border border-border rounded-[2rem] overflow-hidden bg-muted/30 hover:bg-muted/60 transition-all duration-300 group/item">
+                    <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                      <div className="flex items-center justify-between w-full pr-3">
+                        <DetailBlockHeader title="Venda" index={i} filled={!!sale.leadNome.trim() && !!sale.canalVenda} />
+                        {saleTierInfo && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${saleTierInfo.color}`}>
+                            {saleTierInfo.label}
+                          </span>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-6 pb-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField label="Lead/Projeto" required>
+                          <Input value={sale.leadNome} onChange={(e) => updateSale(i, "leadNome", e.target.value)} placeholder="Nome do lead vendido" />
+                        </FormField>
+                        <FormField label="Faixa Faturamento Cliente" required>
+                          <Select value={sale.faixaFaturamento} onValueChange={(v) => updateSale(i, "faixaFaturamento", v)}>
+                            <SelectTrigger><SelectValue placeholder="Selecione a faixa" /></SelectTrigger>
+                            <SelectContent>
+                              {FAIXAS_FATURAMENTO.map(f => (
+                                <SelectItem key={f.value} value={f.value}>
+                                  <span className="flex items-center gap-2">
+                                    {f.label}
+                                    <span className="text-[10px] opacity-60">({f.tier})</span>
+                                  </span>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormField>
+                        <FormField label="SDR Responsável (Pré-Venda)">
+                          <Select value={sale.sdrId} onValueChange={(v) => updateSale(i, "sdrId", v)}>
+                            <SelectTrigger><SelectValue placeholder="Selecione o SDR" /></SelectTrigger>
+                            <SelectContent>
+                              {[...unitSDRs, ...unitClosers, ...unitGerentes].map(s => <SelectItem key={s.userId} value={s.userId}>{s.fullName} ({s.role === "sdr" ? "SDR" : s.role === "gerente_unidade" ? "Gerente" : "Closer"})</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </FormField>
+                        <FormField label="Canal da Venda" required>
+                          <Select value={sale.canalVenda} onValueChange={(v) => updateSale(i, "canalVenda", v)}>
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>{unitChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </FormField>
+                        <FormField label="Valor da Venda (R$)">
+                          <Input type="number" min={0} value={sale.valorTotal || ""} onChange={(e) => updateSale(i, "valorTotal", +e.target.value)} placeholder="0,00" className="tabular" />
+                        </FormField>
+                        <FormField label="Recorrente (R$)">
+                          <Input type="number" min={0} value={sale.valorRecorrente || ""} onChange={(e) => updateSale(i, "valorRecorrente", +e.target.value)} placeholder="0,00" className="tabular" />
+                        </FormField>
+                        <FormField label="One-Time (R$)">
+                          <Input type="number" min={0} value={sale.valorOnetime || ""} onChange={(e) => updateSale(i, "valorOnetime", +e.target.value)} placeholder="0,00" className="tabular" />
+                        </FormField>
+                        <FormField label="Churn M0 (R$)">
+                          <Input type="number" min={0} value={sale.churnM0 || ""} onChange={(e) => updateSale(i, "churnM0", +e.target.value)} placeholder="0,00" className="tabular" />
+                        </FormField>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </div>
+        );
+      })()}
 
       {/* ── Financeiro (auto-calculated or manual) ── */}
       <FormSection title={autoCalcActive ? "Financeiro (auto-calculado das vendas)" : "Financeiro"}>
@@ -617,8 +756,10 @@ const emptyPvContract = (): PvContractDetail => ({ leadNome: "", canal: "", valo
 
 export function DailyFormPreVendas() {
   const { addPvSubmission } = useDashboardStore();
-  const { preVendas: unitPreVendas, closers: unitClosers, userUnitId } = useUnitData();
+  const { preVendas: unitPreVendas, closers: unitClosers, gerentes: unitGerentes, userUnitId } = useUnitData();
+  const { unitChannels } = useUnitChannels();
   const { profile, roles } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -692,6 +833,9 @@ export function DailyFormPreVendas() {
   const realizedFilled = realizedCalls.filter(r => r.leadNome.trim()).length;
   const contractsFilled = pvContracts.filter(c => c.leadNome.trim()).length;
 
+  const selectedUser = [...unitPreVendas, ...unitClosers, ...unitGerentes].find(p => p.userId === form.userId);
+  const isSdr = selectedUser?.role === "sdr";
+
   const updateBooked = (i: number, field: keyof BookedCallDetail, value: string) => {
     setBookedCalls(prev => prev.map((b, idx) => idx === i ? { ...b, [field]: value } : b));
   };
@@ -720,7 +864,7 @@ export function DailyFormPreVendas() {
     }
 
     setSubmitting(true);
-    const dataRef = new Date().toISOString().split("T")[0];
+    const dataRef = format(selectedDate, "yyyy-MM-dd");
 
     try {
       const { data: sub, error: subErr } = await supabase
@@ -733,11 +877,11 @@ export function DailyFormPreVendas() {
           calls_realizadas: form.callsRealizadas,
           no_show: form.noShow,
           reagendamentos: form.reagendamentos,
-          contratos_assinados: form.contratosAssinados,
-          valor_contrato_total: effectiveFinancials.valorTotal,
-          valor_recorrente: effectiveFinancials.valorRecorrente,
-          valor_onetime: effectiveFinancials.valorOnetime,
-          churn_m0: effectiveFinancials.churnM0,
+          contratos_assinados: 0,
+          valor_contrato_total: 0,
+          valor_recorrente: 0,
+          valor_onetime: 0,
+          churn_m0: 0,
           observacoes: form.observacoes || null,
         })
         .select("id")
@@ -801,11 +945,11 @@ export function DailyFormPreVendas() {
         callsRealizadas: form.callsRealizadas,
         noShow: form.noShow,
         reagendamentos: form.reagendamentos,
-        contratosAssinados: form.contratosAssinados,
-        valorContratoTotal: effectiveFinancials.valorTotal,
-        valorRecorrente: effectiveFinancials.valorRecorrente,
-        valorOnetime: effectiveFinancials.valorOnetime,
-        churnM0: effectiveFinancials.churnM0,
+        contratosAssinados: 0,
+        valorContratoTotal: 0,
+        valorRecorrente: 0,
+        valorOnetime: 0,
+        churnM0: 0,
         observacoes: form.observacoes,
       });
 
@@ -826,7 +970,7 @@ export function DailyFormPreVendas() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="group relative glass-panel rounded-[2.5rem] p-8 sm:p-10 border-white/10 shadow-2xl transition-all duration-500 overflow-hidden space-y-10">
+    <form onSubmit={handleSubmit} className="group relative bg-card rounded-[2.5rem] p-8 sm:p-10 border border-border shadow-xl transition-all duration-500 overflow-hidden space-y-10">
       {/* Brilliant Shine Effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none">
         <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-[-20deg] animate-shine" />
@@ -845,11 +989,13 @@ export function DailyFormPreVendas() {
           <FormField label="Pré-Vendas" required>
             <Select value={form.userId} onValueChange={(v) => setForm({ ...form, userId: v })}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{unitPreVendas.map((p) => <SelectItem key={p.userId} value={p.userId}>{p.fullName}</SelectItem>)}</SelectContent>
+              <SelectContent>{[...unitPreVendas, ...unitClosers, ...unitGerentes].map((p) => <SelectItem key={p.userId} value={p.userId}>{p.fullName} ({p.role === "sdr" ? "SDR" : p.role === "gerente_unidade" ? "Gerente" : "Closer"})</SelectItem>)}</SelectContent>
             </Select>
           </FormField>
         </FormSection>
       )}
+
+      <DatePickerField date={selectedDate} onSelect={setSelectedDate} />
 
       <FormSection title="Atividade">
         <FormField label="Calls Marcadas">
@@ -873,7 +1019,7 @@ export function DailyFormPreVendas() {
           <CompletionCounter label="Calls marcadas detalhadas" filled={bookedFilled} total={form.callsMarcadas} />
           <Accordion type="multiple" defaultValue={bookedCalls.map((_, i) => `booked-${i}`)} className="space-y-2">
             {bookedCalls.map((bc, i) => (
-              <AccordionItem key={i} value={`booked-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+              <AccordionItem key={i} value={`booked-${i}`} className="border border-border rounded-[2rem] overflow-hidden bg-muted/30 hover:bg-muted/60 transition-all duration-300 group/item">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Call Marcada" index={i} filled={!!bc.leadNome.trim()} />
                 </AccordionTrigger>
@@ -898,7 +1044,7 @@ export function DailyFormPreVendas() {
                     <FormField label="Canal">
                       <Select value={bc.canal} onValueChange={(v) => updateBooked(i, "canal", v)}>
                         <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
-                        <SelectContent>{channels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+                        <SelectContent>{unitChannels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
                       </Select>
                     </FormField>
                   </div>
@@ -916,7 +1062,7 @@ export function DailyFormPreVendas() {
           <CompletionCounter label="Calls realizadas detalhadas" filled={realizedFilled} total={form.callsRealizadas} />
           <Accordion type="multiple" defaultValue={realizedCalls.map((_, i) => `realized-${i}`)} className="space-y-2">
             {realizedCalls.map((rc, i) => (
-              <AccordionItem key={i} value={`realized-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
+              <AccordionItem key={i} value={`realized-${i}`} className="border border-border rounded-[2rem] overflow-hidden bg-muted/30 hover:bg-muted/60 transition-all duration-300 group/item">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
                   <DetailBlockHeader title="Call Realizada" index={i} filled={!!rc.leadNome.trim()} />
                 </AccordionTrigger>
@@ -946,84 +1092,7 @@ export function DailyFormPreVendas() {
         </div>
       )}
 
-      {/* ── Contratos Detail ── */}
-      <FormSection title="Contratos">
-        <FormField label="Contratos Assinados">
-          <Input type="number" min={0} value={form.contratosAssinados || ""} onChange={(e) => { const v = +e.target.value; setForm({ ...form, contratosAssinados: v }); syncContracts(v); }} placeholder="0" className="tabular" />
-        </FormField>
-      </FormSection>
-
-      {form.contratosAssinados > 0 && (
-        <div className="space-y-3">
-          <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground font-medium border-b border-border/50 pb-2">Detalhamento de Contratos</p>
-          <CompletionCounter label="Contratos detalhados" filled={contractsFilled} total={form.contratosAssinados} />
-          <Accordion type="multiple" defaultValue={pvContracts.map((_, i) => `contract-${i}`)} className="space-y-2">
-            {pvContracts.map((ct, i) => (
-              <AccordionItem key={i} value={`contract-${i}`} className="border border-white/10 rounded-[2rem] overflow-hidden bg-white/5 hover:bg-white/10 transition-all duration-300 group/item">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <DetailBlockHeader title="Contrato" index={i} filled={!!ct.leadNome.trim()} />
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <FormField label="Lead/Projeto" required>
-                      <Input value={ct.leadNome} onChange={(e) => updateContract(i, "leadNome", e.target.value)} placeholder="Nome do lead" />
-                    </FormField>
-                    <FormField label="Closer Responsável">
-                      <Select value={ct.closerId || ""} onValueChange={(v) => updateContract(i, "closerId", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione o Closer" /></SelectTrigger>
-                        <SelectContent>
-                          {unitClosers.map(c => <SelectItem key={c.userId} value={c.userId}>{c.fullName}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </FormField>
-                    <FormField label="Canal">
-                      <Select value={ct.canal} onValueChange={(v) => updateContract(i, "canal", v)}>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>{channels.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </FormField>
-                    <FormField label="Valor Total (R$)">
-                      <Input type="number" min={0} value={ct.valorTotal || ""} onChange={(e) => updateContract(i, "valorTotal", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="Recorrente (R$)">
-                      <Input type="number" min={0} value={ct.valorRecorrente || ""} onChange={(e) => updateContract(i, "valorRecorrente", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="One-Time (R$)">
-                      <Input type="number" min={0} value={ct.valorOnetime || ""} onChange={(e) => updateContract(i, "valorOnetime", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                    <FormField label="Churn M0 (R$)">
-                      <Input type="number" min={0} value={ct.churnM0 || ""} onChange={(e) => updateContract(i, "churnM0", +e.target.value)} placeholder="0,00" className="tabular" />
-                    </FormField>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </div>
-      )}
-
-      {/* ── Financeiro ── */}
-      <FormSection title={autoCalcActive ? "Financeiro (auto-calculado dos contratos)" : "Financeiro"}>
-        <FormField label="Valor Total (R$)">
-          <Input type="number" min={0} value={effectiveFinancials.valorTotal || ""} onChange={(e) => !autoCalcActive && setForm({ ...form, valorContratoTotal: +e.target.value })} placeholder="0,00" className="tabular" disabled={autoCalcActive} />
-        </FormField>
-        <FormField label="Recorrente (R$)">
-          <Input type="number" min={0} value={effectiveFinancials.valorRecorrente || ""} onChange={(e) => !autoCalcActive && setForm({ ...form, valorRecorrente: +e.target.value })} placeholder="0,00" className="tabular" disabled={autoCalcActive} />
-        </FormField>
-        <FormField label="One-Time (R$)">
-          <Input type="number" min={0} value={effectiveFinancials.valorOnetime || ""} onChange={(e) => !autoCalcActive && setForm({ ...form, valorOnetime: +e.target.value })} placeholder="0,00" className="tabular" disabled={autoCalcActive} />
-        </FormField>
-        <FormField label="Churn M0 (R$)">
-          <Input type="number" min={0} value={effectiveFinancials.churnM0 || ""} onChange={(e) => !autoCalcActive && setForm({ ...form, churnM0: +e.target.value })} placeholder="0,00" className="tabular" disabled={autoCalcActive} />
-        </FormField>
-      </FormSection>
-
-      {autoCalcActive && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
-          <CheckCircle className="w-3.5 h-3.5 text-accent shrink-0" />
-          <p className="text-[11px] text-accent">Valores financeiros calculados automaticamente a partir dos blocos de contrato.</p>
-        </div>
-      )}
+      {/* ── Removed Contratos Detail & Financeiro ── */}
 
       <FormField label="Observações gerais">
         <Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} placeholder="Observações do dia (opcional)" className="min-h-[60px]" />

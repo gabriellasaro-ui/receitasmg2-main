@@ -126,9 +126,11 @@ export function ProposalAnalysis() {
       <div className="flex flex-wrap gap-3">
         {isAdmin && unitsList.length > 0 && (
           <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="filter-pill w-[240px] border-none shadow-xl">
               <div className="flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                <div className="p-1 rounded-full bg-primary/10">
+                  <Filter className="w-3.5 h-3.5 text-primary" />
+                </div>
                 <SelectValue placeholder="Todas unidades" />
               </div>
             </SelectTrigger>
@@ -139,21 +141,33 @@ export function ProposalAnalysis() {
           </Select>
         )}
         <Select value={filterCloser} onValueChange={setFilterCloser}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Closer" /></SelectTrigger>
+          <SelectTrigger className="filter-pill w-[200px] border-none shadow-xl">
+            <div className="flex items-center gap-2">
+              <SelectValue placeholder="Closer" />
+            </div>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Closers</SelectItem>
             {members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterCanal} onValueChange={setFilterCanal}>
-          <SelectTrigger className="w-[200px]"><SelectValue placeholder="Canal" /></SelectTrigger>
+          <SelectTrigger className="filter-pill w-[200px] border-none shadow-xl">
+            <div className="flex items-center gap-2">
+              <SelectValue placeholder="Canal" />
+            </div>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Canais</SelectItem>
             {channels.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterTemp} onValueChange={setFilterTemp}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Temperatura" /></SelectTrigger>
+          <SelectTrigger className="filter-pill w-[180px] border-none shadow-xl">
+            <div className="flex items-center gap-2">
+              <SelectValue placeholder="Temperatura" />
+            </div>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas</SelectItem>
             <SelectItem value="frio">🔵 Frio</SelectItem>

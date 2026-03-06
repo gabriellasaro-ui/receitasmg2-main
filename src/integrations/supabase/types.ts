@@ -196,6 +196,7 @@ export type Database = {
           data_referencia: string
           id: string
           lead_nome: string
+          observacoes: string | null
           submission_id: string
           valor_onetime: number
           valor_recorrente: number
@@ -209,6 +210,7 @@ export type Database = {
           data_referencia: string
           id?: string
           lead_nome: string
+          observacoes?: string | null
           submission_id: string
           valor_onetime?: number
           valor_recorrente?: number
@@ -222,6 +224,7 @@ export type Database = {
           data_referencia?: string
           id?: string
           lead_nome?: string
+          observacoes?: string | null
           submission_id?: string
           valor_onetime?: number
           valor_recorrente?: number
@@ -491,6 +494,7 @@ export type Database = {
           data_referencia: string
           id: string
           lead_nome: string
+          observacoes: string | null
           pv_id: string
           submission_id: string
           valor_onetime: number
@@ -504,6 +508,7 @@ export type Database = {
           data_referencia: string
           id?: string
           lead_nome: string
+          observacoes?: string | null
           pv_id: string
           submission_id: string
           valor_onetime?: number
@@ -517,6 +522,7 @@ export type Database = {
           data_referencia?: string
           id?: string
           lead_nome?: string
+          observacoes?: string | null
           pv_id?: string
           submission_id?: string
           valor_onetime?: number

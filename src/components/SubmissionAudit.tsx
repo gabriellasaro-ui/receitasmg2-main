@@ -9,10 +9,25 @@ import { SemaforoBadge } from "./SemaforoBadge";
 import { SubmissionHistory } from "./SubmissionHistory";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-function MemberAvatar({ name, className }: { name: string; className?: string }) {
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
+  const [error, setError] = useState(false);
+
+  if (avatarUrl && !error) {
+    return (
+      <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/50 border border-border/40 shrink-0 ${className}`}>
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setError(true)}
+        />
+      </div>
+    );
+  }
+
+  const initials = name.split(" ").filter(n => n).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
-    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] ${className}`}>
+    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] shrink-0 ${className}`}>
       {initials}
     </div>
   );
@@ -32,7 +47,7 @@ export function SubmissionAudit() {
   }, [isAdmin]);
 
   // Pass the selected unit to useUnitData so members are filtered
-  const { closers, preVendas, members } = useUnitData(isAdmin ? selectedUnitId : undefined);
+  const { closers, preVendas, gerentes } = useUnitData(isAdmin ? selectedUnitId : undefined);
   const { closerSubmissions, pvSubmissions, loadFromDB } = useDashboardStore();
 
   // Reload store when admin changes unit filter
@@ -47,12 +62,19 @@ export function SubmissionAudit() {
 
   const pastDays = businessDays.filter((d) => d <= today);
 
-  function hasSubmission(userId: string, date: string, funcao: "closer" | "sdr"): boolean {
+  function hasSubmission(userId: string, date: string, funcao: "closer" | "sdr" | "gerente_unidade"): boolean {
     if (funcao === "closer") return closerSubmissions.some((s) => s.userId === userId && s.dataReferencia === date);
-    return pvSubmissions.some((s) => s.userId === userId && s.dataReferencia === date);
+    if (funcao === "sdr") return pvSubmissions.some((s) => s.userId === userId && s.dataReferencia === date);
+    return closerSubmissions.some((s) => s.userId === userId && s.dataReferencia === date) || pvSubmissions.some((s) => s.userId === userId && s.dataReferencia === date);
   }
 
-  function getSubmissionTime(userId: string, date: string, funcao: "closer" | "sdr"): string | null {
+  function getSubmissionTime(userId: string, date: string, funcao: "closer" | "sdr" | "gerente_unidade"): string | null {
+    if (funcao === "gerente_unidade") {
+      const c = closerSubmissions.find((s) => s.userId === userId && s.dataReferencia === date);
+      if (c) return c.submittedAt;
+      const s = pvSubmissions.find((s) => s.userId === userId && s.dataReferencia === date);
+      return s?.submittedAt || null;
+    }
     const sub = funcao === "closer"
       ? closerSubmissions.find((s) => s.userId === userId && s.dataReferencia === date)
       : pvSubmissions.find((s) => s.userId === userId && s.dataReferencia === date);
@@ -64,14 +86,14 @@ export function SubmissionAudit() {
     return { day: d.getDate(), weekday: d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "") };
   };
 
-  const allMembers = [...closers, ...preVendas];
+  const allMembers = [...closers, ...preVendas, ...gerentes];
   const totalExpected = pastDays.length * allMembers.length;
   const totalSubmitted = pastDays.reduce((acc, date) =>
     acc + allMembers.filter((m) => hasSubmission(m.userId, date, m.role as any)).length, 0);
   const pendingToday = allMembers.filter((m) => !hasSubmission(m.userId, today, m.role as any));
   const completionRate = totalExpected > 0 ? totalSubmitted / totalExpected : 0;
 
-  function AuditTable({ unitMembers, funcao, title }: { unitMembers: UnitMember[]; funcao: "closer" | "sdr"; title: string }) {
+  function AuditTable({ unitMembers, funcao, title }: { unitMembers: UnitMember[]; funcao: "closer" | "sdr" | "gerente_unidade"; title: string }) {
     return (
       <div>
         <p className="section-title mb-3">{title}</p>
@@ -106,7 +128,7 @@ export function SubmissionAudit() {
                       <tr key={m.userId} className="table-row-v4">
                         <td className="p-3 sticky left-0 bg-card z-10">
                           <div className="flex items-center gap-2">
-                            <MemberAvatar name={m.fullName} className="w-6 h-6" />
+                            <MemberAvatar name={m.fullName} avatarUrl={m.avatarUrl} className="w-6 h-6" />
                             <span className="font-medium text-[12px]">{m.fullName}</span>
                           </div>
                         </td>
@@ -152,7 +174,7 @@ export function SubmissionAudit() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <ClipboardCheck className="w-6 h-6 text-primary" />
@@ -163,9 +185,11 @@ export function SubmissionAudit() {
         <div className="flex items-center gap-3 flex-wrap">
           {isAdmin && unitsList.length > 0 && (
             <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger className="w-[200px] h-9 text-sm">
+              <SelectTrigger className="filter-pill w-[240px] border-none shadow-xl">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                  <div className="p-1 rounded-full bg-primary/10">
+                    <Filter className="w-3.5 h-3.5 text-primary" />
+                  </div>
                   <SelectValue placeholder="Todas unidades" />
                 </div>
               </SelectTrigger>
@@ -205,6 +229,7 @@ export function SubmissionAudit() {
 
       <AuditTable unitMembers={closers} funcao="closer" title="Closers" />
       <AuditTable unitMembers={preVendas} funcao="sdr" title="Pré-Vendas" />
+      <AuditTable unitMembers={gerentes} funcao="gerente_unidade" title="Gerentes de Unidade" />
 
       <SubmissionHistory />
     </div>

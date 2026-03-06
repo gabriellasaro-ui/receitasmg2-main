@@ -9,28 +9,28 @@ import {
 } from "@/data/seedData";
 import { SemaforoBadge } from "./SemaforoBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2, Filter, Users } from "lucide-react";
+import { Filter, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
-  if (avatarUrl) {
+  const [error, setError] = useState(false);
+
+  if (avatarUrl && !error) {
     return (
       <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/80 border border-border/40 shrink-0 ${className}`}>
         <img
           src={avatarUrl}
           alt={name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
+          onError={() => setError(true)}
         />
       </div>
     );
   }
 
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = name.split(" ").filter(n => n).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
     <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[13px] shrink-0 ${className}`}>
       {initials}
@@ -78,21 +78,29 @@ export function PersonView() {
             <p className="text-sm text-muted-foreground mt-1">Métricas individuais de performance</p>
           </div>
 
+          {/* Filtro de unidade — admin */}
           {isAdmin && unitsList.length > 0 && (
-            <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger className="w-[220px] h-10">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                  <SelectValue placeholder="Todas unidades" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Time Completo (Brasil)</SelectItem>
-                {unitsList.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-3">
+              <Select
+                value={selectedUnitId || "all"}
+                onValueChange={(v) => setSelectedUnitId(v === "all" ? "all" : v)}
+              >
+                <SelectTrigger className="filter-pill w-[260px] border-0 shadow-lg shadow-black/5 focus:ring-0 focus:ring-offset-0 h-11 rounded-full px-5 gap-3">
+                  <Filter className="filter-icon-red shrink-0 w-4 h-4" />
+                  <SelectValue placeholder="Selecionar unidade" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl border border-border/60 shadow-2xl shadow-black/10 backdrop-blur-sm bg-white/95 dark:bg-card/95 mt-1">
+                  <SelectItem value="all" className="rounded-xl font-semibold text-sm cursor-pointer">
+                    Time Completo (Brasil)
+                  </SelectItem>
+                  {unitsList.map((u) => (
+                    <SelectItem key={u.id} value={u.id} className="rounded-xl text-sm cursor-pointer">
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
 

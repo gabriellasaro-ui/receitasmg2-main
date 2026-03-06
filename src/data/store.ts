@@ -19,6 +19,7 @@ interface DashboardStore {
     pessoa: string;
     funcao: string;
   };
+  pendingApprovalsCount: number;
   setFilter: (key: string, value: string) => void;
   addPvSubmission: (sub: DailySubmissionPreVendas) => void;
   addCloserSubmission: (sub: DailySubmissionCloser) => void;
@@ -63,6 +64,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
   pvSubmissions: [],
   closerSubmissions: [],
   filters: { canal: "todos", pessoa: "todos", funcao: "todos" },
+  pendingApprovalsCount: 0,
 
   setFilter: (key, value) =>
     set((s) => ({ filters: { ...s.filters, [key]: value } })),
@@ -110,7 +112,14 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       pvQuery = pvQuery.eq("unit_id", unitId);
     }
 
-    const [csRes, pvRes, goalsRes] = await Promise.all([csQuery, pvQuery, goalsQuery]);
+    const [csRes, pvRes, goalsRes, pendingRes] = await Promise.all([
+      csQuery,
+      pvQuery,
+      goalsQuery,
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "pending")
+    ]);
+
+    const pendingCount = pendingRes.count || 0;
 
     // Mapear metas do banco para o formato GoalSettings
     let loadedGoals: GoalSettings = { ...defaultGoalSettings, mesRef, anoRef };
@@ -174,7 +183,12 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
       submittedAt: row.created_at,
     }));
 
-    set({ closerSubmissions: closerSubs, pvSubmissions: pvSubs, goals: loadedGoals });
+    set({
+      closerSubmissions: closerSubs,
+      pvSubmissions: pvSubs,
+      goals: loadedGoals,
+      pendingApprovalsCount: pendingCount
+    });
   },
 
   getCloserAcumulado: (userId) => {

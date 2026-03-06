@@ -162,12 +162,14 @@ export function PreSalesAnalysis() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        {isAdmin && unitsList.length > 0 && (
+        {isAdmin && (
           <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="filter-pill w-[240px] border-none shadow-xl">
               <div className="flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                <SelectValue placeholder="Todas unidades" />
+                <div className="p-1 rounded-full bg-primary/10">
+                  <Filter className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <SelectValue placeholder="Todas Unidades" />
               </div>
             </SelectTrigger>
             <SelectContent>
@@ -177,14 +179,22 @@ export function PreSalesAnalysis() {
           </Select>
         )}
         <Select value={filterPv} onValueChange={setFilterPv}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pré-Vendas" /></SelectTrigger>
+          <SelectTrigger className="filter-pill w-[200px] border-none shadow-xl">
+            <div className="flex items-center gap-2">
+              <SelectValue placeholder="Todos Pré-Vendas" />
+            </div>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Pré-Vendas</SelectItem>
             {members.map(m => <SelectItem key={m.user_id} value={m.user_id}>{m.full_name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterTipoLead} onValueChange={setFilterTipoLead}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Tipo de Lead" /></SelectTrigger>
+          <SelectTrigger className="filter-pill w-[180px] border-none shadow-xl">
+            <div className="flex items-center gap-2">
+              <SelectValue placeholder="Qualquer Lead" />
+            </div>
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos Tipos</SelectItem>
             {tipoLeadValues.map(t => <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>)}

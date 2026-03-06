@@ -60,10 +60,25 @@ interface PvSub {
   created_at: string;
 }
 
-function MemberAvatar({ name, className }: { name: string; className?: string }) {
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
+  const [error, setError] = useState(false);
+
+  if (avatarUrl && !error) {
+    return (
+      <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/50 border border-border/40 shrink-0 ${className}`}>
+        <img
+          src={avatarUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setError(true)}
+        />
+      </div>
+    );
+  }
+
+  const initials = name.split(" ").filter(n => n).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
-    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] ${className}`}>
+    <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px] shrink-0 ${className}`}>
       {initials}
     </div>
   );
@@ -82,6 +97,8 @@ export function SubmissionHistory() {
   const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [originalForm, setOriginalForm] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [detailsForm, setDetailsForm] = useState<any[]>([]);
+  const [originalDetails, setOriginalDetails] = useState<any[]>([]);
 
   const fetchSubs = async () => {
     setLoading(true);
@@ -148,9 +165,10 @@ export function SubmissionHistory() {
     }
   };
 
-  const openEdit = (sub: any, type: "closer" | "pv") => {
+  const openEdit = async (sub: any, type: "closer" | "pv") => {
     setEditTarget({ sub, type });
     const formData = type === "closer" ? {
+      data_referencia: sub.data_referencia,
       calls_realizadas: sub.calls_realizadas,
       no_show: sub.no_show,
       propostas_realizadas: sub.propostas_realizadas,
@@ -160,6 +178,7 @@ export function SubmissionHistory() {
       valor_onetime: Number(sub.valor_onetime),
       churn_m0: Number(sub.churn_m0),
     } : {
+      data_referencia: sub.data_referencia,
       calls_marcadas: sub.calls_marcadas,
       calls_realizadas: sub.calls_realizadas,
       no_show: sub.no_show,
@@ -172,6 +191,16 @@ export function SubmissionHistory() {
     };
     setEditForm({ ...formData });
     setOriginalForm({ ...formData });
+
+    const table = type === "closer" ? "closer_sales_detail" : "pv_contracts_detail";
+    const { data } = await supabase.from(table).select("*").eq("submission_id", sub.id);
+    if (data) {
+      setDetailsForm(data);
+      setOriginalDetails(JSON.parse(JSON.stringify(data)));
+    } else {
+      setDetailsForm([]);
+      setOriginalDetails([]);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -182,7 +211,32 @@ export function SubmissionHistory() {
       const table = type === "closer" ? "closer_submissions" : "pv_submissions";
       const { error } = await supabase.from(table).update(editForm).eq("id", sub.id);
       if (error) throw error;
-      toast.success("Lançamento atualizado!");
+
+      // Update details
+      for (const d of detailsForm) {
+        const orig = originalDetails.find(o => o.id === d.id);
+        if (JSON.stringify(orig) !== JSON.stringify(d)) {
+          const detTable = type === "closer" ? "closer_sales_detail" : "pv_contracts_detail";
+          await supabase.from(detTable).update({
+            lead_nome: d.lead_nome,
+            data_referencia: editForm.data_referencia,
+            faixa_faturamento: d.faixa_faturamento
+          }).eq("id", d.id);
+        }
+      }
+
+      // Update call details date if needed
+      if (editForm.data_referencia !== originalForm.data_referencia) {
+        if (type === "closer") {
+          await supabase.from("closer_calls_detail").update({ data_referencia: editForm.data_referencia }).eq("submission_id", sub.id);
+          await supabase.from("closer_proposals_detail").update({ data_referencia: editForm.data_referencia }).eq("submission_id", sub.id);
+        } else {
+          await supabase.from("pv_booked_calls_detail").update({ data_referencia: editForm.data_referencia }).eq("submission_id", sub.id);
+          await supabase.from("pv_realized_calls_detail").update({ data_referencia: editForm.data_referencia }).eq("submission_id", sub.id);
+        }
+      }
+
+      toast.success("Lançamento e detalhes atualizados!");
       setEditTarget(null);
       await fetchSubs();
       const unitId = isAdmin ? null : userUnitId;
@@ -193,6 +247,8 @@ export function SubmissionHistory() {
       setSaving(false);
     }
   };
+
+
 
   const formatDate = (d: string) => {
     const date = new Date(d + "T12:00:00");
@@ -276,12 +332,15 @@ export function SubmissionHistory() {
                     <td className="p-3 tabular font-medium">{formatDate(sub.data_referencia)}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <MemberAvatar name={getMemberName(sub._userId)} className="w-6 h-6" />
+                        {(() => {
+                          const m = members.find(m => m.userId === sub._userId);
+                          return <MemberAvatar name={m?.fullName || "Membro"} avatarUrl={m?.avatarUrl} className="w-6 h-6" />;
+                        })()}
                         <span className="truncate max-w-[120px]">{getMemberName(sub._userId)}</span>
                       </div>
                     </td>
                     <td className="p-3">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${sub._type === "closer" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent-foreground"}`}>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${sub._type === "closer" ? "bg-primary/10 text-primary" : "bg-accent/10 text-accent"}`}>
                         {sub._type === "closer" ? "Closer" : "Pré-Venda"}
                       </span>
                     </td>
@@ -373,18 +432,58 @@ export function SubmissionHistory() {
                 </div>
               );
             })}
+            <div className="space-y-1 col-span-2">
+              <label className="text-[11px] font-medium text-muted-foreground">Data Referência</label>
+              <Input
+                type="date"
+                value={editForm.data_referencia ?? ""}
+                onChange={(e) => setEditForm({ ...editForm, data_referencia: e.target.value })}
+                className={`tabular h-9 transition-colors ${editForm.data_referencia !== originalForm.data_referencia ? "border-primary bg-primary/5 ring-1 ring-primary/20" : ""}`}
+              />
+            </div>
+
+            {/* Contract details (if they exist) */}
+            {detailsForm.length > 0 && (
+              <div className="col-span-2 space-y-3 mt-2 border-t border-border pt-3">
+                <p className="text-[11px] font-bold text-muted-foreground uppercase">Detalhes de Contratos Vinculados</p>
+                {detailsForm.map((det, idx) => (
+                  <div key={det.id} className="grid grid-cols-2 gap-2 bg-muted/40 p-2 rounded-lg border border-border/50 relative">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Lead Nome</label>
+                      <Input value={det.lead_nome || ""} onChange={(e) => setDetailsForm(prev => prev.map((d, i) => i === idx ? { ...d, lead_nome: e.target.value } : d))} className="h-7 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Faturamento (GMV)</label>
+                      <select value={det.faixa_faturamento || ""} onChange={(e) => setDetailsForm(prev => prev.map((d, i) => i === idx ? { ...d, faixa_faturamento: e.target.value } : d))} className="h-7 text-xs w-full bg-background border border-input rounded-md px-1">
+                        <option value="">Selecione...</option>
+                        <option value="ate_50k">Até R$ 50 mil</option>
+                        <option value="51k_70k">51k a 70k</option>
+                        <option value="71k_100k">71k a 100k</option>
+                        <option value="101k_200k">101k a 200k (Small)</option>
+                        <option value="201k_400k">201k a 400k (Small)</option>
+                        <option value="401k_1mm">401k a 1mm (Medium)</option>
+                        <option value="1mm_4mm">1mm a 4mm (Medium)</option>
+                        <option value="4mm_16mm">4mm a 16mm (Large)</option>
+                        <option value="16mm_40mm">16mm a 40mm (Large)</option>
+                        <option value="mais_40mm">Mais de 40mm (Ent.)</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          {Object.keys(editForm).some(k => editForm[k] !== originalForm[k]) && (
+          {(Object.keys(editForm).some(k => editForm[k] !== originalForm[k]) || JSON.stringify(detailsForm) !== JSON.stringify(originalDetails)) && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/15">
               <Pencil className="w-3.5 h-3.5 text-primary shrink-0" />
               <p className="text-[11px] text-primary/80">
-                {Object.keys(editForm).filter(k => editForm[k] !== originalForm[k]).length} campo(s) alterado(s)
+                Há alterações pendentes para salvar
               </p>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditTarget(null)} disabled={saving}>Cancelar</Button>
-            <Button onClick={handleSaveEdit} disabled={saving || !Object.keys(editForm).some(k => editForm[k] !== originalForm[k])}>
+            <Button onClick={handleSaveEdit} disabled={saving || !(Object.keys(editForm).some(k => editForm[k] !== originalForm[k]) || JSON.stringify(detailsForm) !== JSON.stringify(originalDetails))}>
               {saving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
               Salvar
             </Button>

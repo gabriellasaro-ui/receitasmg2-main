@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardStore } from "@/data/store";
 import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 import { KpiCard } from "@/components/KpiCard";
 import { RankingClosers, RankingPreVendas } from "@/components/Rankings";
 import { FunnelChart } from "@/components/FunnelChart";
@@ -19,7 +20,7 @@ import {
   GoalSettings,
   defaultGoalSettings,
 } from "@/data/seedData";
-import { AlertTriangle, Calendar, Activity, Target, TrendingUp, Building2, Trophy, Filter } from "lucide-react";
+import { AlertTriangle, Calendar, Activity, Target, TrendingUp, Building2, Trophy, Filter, Users, User, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function Dashboard() {
   const { getTotais, loadFromDB } = useDashboardStore();
@@ -141,7 +142,13 @@ export default function Dashboard() {
   const idealReceita = calcIdealDia(goals.metaReceitaTotal, diaAtual, goals.diasUteisTotal);
   const pctIdealReceita = calcPctIdeal(totais.faturamento, idealReceita);
   const gapReceita = totais.faturamento - idealReceita;
-  const projecaoFinal = diaAtual > 0 ? (totais.faturamento / diaAtual) * goals.diasUteisTotal : 0;
+  const projeFinal = diaAtual > 0 ? (totais.faturamento / diaAtual) * goals.diasUteisTotal : 0; // We keep var name just in case
+  const faltaParaMeta = Math.max(0, goals.metaReceitaTotal - totais.faturamento);
+  const paceDiario = diaAtual > 0 ? totais.faturamento / diaAtual : 0;
+  const metaDiaria = goals.diasUteisTotal > 0 ? goals.metaReceitaTotal / goals.diasUteisTotal : 0;
+  const gapRitmo = paceDiario - metaDiaria;
+  const taxaShow = totais.rm > 0 ? totais.rr / totais.rm : 0;
+  const taxaConversao = totais.rr > 0 ? totais.contratos / totais.rr : 0;
   const semaforoGeral = getSemaforoStatus(pctIdealReceita);
   const semaforoChurn = getChurnSemaforoStatus(totais.churnM0, goals.metaChurnM0Max);
   const hasData = totais.faturamento > 0 || totais.contratos > 0 || totais.rm > 0;
@@ -179,16 +186,16 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           {isAdmin && unitsList.length > 0 && (
             <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>
-              <SelectTrigger className="w-[240px] h-11 rounded-2xl glass-panel border-white/10 shadow-lg text-sm font-semibold">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-primary" />
+              <SelectTrigger className="filter-pill w-[240px] border-none shadow-xl">
+                <div className="flex items-center gap-3">
+                  <Filter className="filter-icon-red" />
                   <SelectValue placeholder="Todas unidades" />
                 </div>
               </SelectTrigger>
               <SelectContent className="glass-panel border-white/10 rounded-2xl">
-                <SelectItem value="all" className="font-semibold">Consolidado Regional</SelectItem>
+                <SelectItem value="all" className="font-semibold cursor-pointer">Consolidado Regional</SelectItem>
                 {unitsList.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                  <SelectItem key={u.id} value={u.id} className="cursor-pointer font-medium">{u.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -198,6 +205,27 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Photo Incentive ── */}
+      {!profile?.avatar_url && (
+        <div className="bg-primary/10 border border-primary/20 p-4 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center shrink-0 border-2 border-primary/30">
+              <Users className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Destaque-se no Time!</p>
+              <p className="text-[12px] text-muted-foreground">Você ainda não subiu sua foto de perfil. Adicione uma para aparecer nos rankings e dash.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('navigate', { detail: 'perfil' }))}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-full text-xs font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
+          >
+            Configurar Agora
+          </button>
+        </div>
+      )}
 
       {/* ── Empty State ── */}
       {!hasData && (
@@ -224,41 +252,35 @@ export default function Dashboard() {
             <KpiCard label="Faturamento Total" value={totais.faturamento} meta={goals.metaReceitaTotal} format="currency" size="large" />
             <KpiCard label="Receita Líquida" value={totais.receitaLiquida} meta={goals.metaReceitaLiquida} format="currency" size="large" />
 
-            {/* Projeção Final Glass Card */}
-            <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden animation-shine-container">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 shadow-overlay">
-                <div className="shine-overlay" />
-              </div>
-              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${projecaoFinal >= goals.metaReceitaTotal ? "bg-semaforo-verde" : "bg-semaforo-vermelho"} opacity-80`} />
+            {/* Falta para a Meta Glass Card */}
+            <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
+              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${faltaParaMeta === 0 ? "bg-semaforo-verde" : "bg-semaforo-vermelho"} opacity-80`} />
 
-              <p className="kpi-label mb-4 opacity-60">Projeção Final</p>
-              <p className="text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none">{hasData ? formatCurrency(projecaoFinal) : "—"}</p>
+              <p className="kpi-label mb-4 opacity-60">Falta para a Meta</p>
+              <p className="text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none">{hasData ? formatCurrency(faltaParaMeta) : "—"}</p>
 
               {hasData && (
-                <div className="mt-6 flex flex-col gap-3">
+                <div className="mt-8 pt-4 border-t border-border/40">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className={`w-3.5 h-3.5 ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`} />
-                    <span className={`text-[11px] font-semibold tabular ${projecaoFinal >= goals.metaReceitaTotal ? "semaforo-verde" : "semaforo-vermelho"}`}>
-                      Gap: {formatCurrency(projecaoFinal - goals.metaReceitaTotal)}
+                    <Target className={`w-3.5 h-3.5 ${faltaParaMeta === 0 ? "semaforo-verde" : "text-muted-foreground"}`} />
+                    <span className={`text-[11px] font-semibold tabular ${faltaParaMeta === 0 ? "semaforo-verde" : "text-muted-foreground"}`}>
+                      Meta Total: {formatCurrency(goals.metaReceitaTotal)}
                     </span>
-                  </div>
-                  <div className="h-1 w-full bg-secondary/30 rounded-full overflow-hidden">
-                    <div className={`h-full bg-primary rounded-full transition-all duration-1000 w-[65%] progress-glow`} />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Gap vs Ideal Glass Card */}
+            {/* Gap Ritmo Diário Glass Card */}
             <div className="group relative glass-panel rounded-3xl p-6 sm:p-8 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
-              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${hasData ? (gapReceita >= 0 ? "bg-semaforo-verde" : "bg-semaforo-vermelho") : "bg-border/40"} opacity-80`} />
-              <p className="kpi-label mb-4 opacity-60">Gap vs Ideal</p>
-              <p className={`text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none ${hasData ? (gapReceita >= 0 ? "semaforo-verde" : "semaforo-vermelho") : "text-muted-foreground"}`}>
-                {hasData ? formatCurrency(gapReceita) : "—"}
+              <div className={`absolute top-4 bottom-4 left-0 w-[4px] rounded-r-full ${hasData ? (gapRitmo >= 0 ? "bg-semaforo-verde" : "bg-semaforo-vermelho") : "bg-border/40"} opacity-80`} />
+              <p className="kpi-label mb-4 opacity-60">Gap Ritmo Diário</p>
+              <p className={`text-3xl sm:text-4xl font-semibold tabular tracking-tighter leading-none ${hasData ? (gapRitmo >= 0 ? "semaforo-verde" : "semaforo-vermelho") : "text-muted-foreground"}`}>
+                {hasData ? formatCurrency(gapRitmo) : "—"}
               </p>
               <div className="mt-8 pt-4 border-t border-border/40">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground opacity-50">Acumulado Ideal</p>
-                <p className="text-xs font-semibold text-foreground/80 mt-1 tabular">{formatCurrency(idealReceita)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground opacity-50">Meta Diária Ideal</p>
+                <p className="text-xs font-semibold text-foreground/80 mt-1 tabular">{formatCurrency(metaDiaria)}</p>
               </div>
             </div>
           </div>
@@ -287,6 +309,20 @@ export default function Dashboard() {
                 <div className={`h-full bg-primary rounded-full transition-all duration-1000 progress-glow`} style={{ width: `${Math.min(pctMetaReceita * 100, 100)}%` }} />
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Nível 3: Performance Operacional */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-accent" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Performance Operacional</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            <KpiCard label="RM (Reuniões Marcadas)" value={totais.rm} meta={goals.metaRM} />
+            <KpiCard label="RR (Reuniões Realizadas)" value={totais.rr} meta={goals.metaRR} />
+            <KpiCard label="Taxa de Show" value={taxaShow} meta={0} format="percent" invertSemaforo={false} />
+            <KpiCard label="Taxa de Conversão" value={taxaConversao} meta={0} format="percent" invertSemaforo={false} />
           </div>
         </section>
       </div>

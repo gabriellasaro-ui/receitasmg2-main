@@ -20,21 +20,22 @@ interface PendingUser {
 }
 
 function MemberAvatar({ name, avatarUrl, className }: { name: string; avatarUrl?: string | null; className?: string }) {
-  if (avatarUrl) {
+  const [error, setError] = useState(false);
+
+  if (avatarUrl && !error) {
     return (
       <div className={`rounded-full overflow-hidden flex items-center justify-center bg-secondary/50 border border-border/40 shrink-0 ${className}`}>
         <img
           src={avatarUrl}
           alt={name}
           className="w-full h-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
+          onError={() => setError(true)}
         />
       </div>
     );
   }
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+
+  const initials = name.split(" ").filter(n => n).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   return (
     <div className={`rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[11px] shrink-0 ${className}`}>
       {initials}
